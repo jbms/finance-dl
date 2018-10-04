@@ -17,6 +17,8 @@ Supported data sources
 - [finance_dl.mint](finance_dl/mint.py): uses
   [mintapi](https://github.com/mrooney/mintapi) to download data from
   the Mint.com website.
+- [finance_dl.venmo](finance_dl/venmo.py): downloads transaction and
+  balance information from the Venmo.com website
 - [finance_dl.amazon](finance_dl/amazon.py): downloads order invoices
   from the Amazon.com website
 - [finance_dl.healthequity](finance_dl/healthequity.py): downloads
