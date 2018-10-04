@@ -26,7 +26,23 @@ Supported data sources
 Setup
 ==
 
-Type `python setup.py install` or `python setup.py develop`.
+To install the most recent published package from PyPi, simply type:
+
+```shell
+pip install finance-dl
+```
+
+To install from a clone of the repository, type:
+
+```shell
+python setup.py install
+```
+
+or for development:
+
+```shell
+python setup.py develop
+```
 
 Configuration
 ==
