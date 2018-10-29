@@ -57,16 +57,16 @@ Create a Python file like `example_finance_dl_config.py`.
 Refer to the documentation of the individual scraper modules for
 details.
 
-Usage
+Basic Usage
 ==
 
 You can run a scraping configuration named `myconfig` as follows:
 
     python -m finance_dl.cli --config-module example_finance_dl_config --config myconfig
-    
+
 The configuration `myconfig` refers to a function named
 `CONFIG_myconfig` in the configuration module.
-    
+
 Make sure that your configuration module is accessible in your Python
 `sys.path`.  Since `sys.path` includes the current directory by
 default, you can simply run this command from the directory that
@@ -82,6 +82,37 @@ authentication code that is required.
 To debug a scraper, you can run it in interactive mode by specifying
 the `-i` command-line arugment.  This runs an interactive IPython
 shell that lets you manually invoke parts of the scraping process.
+
+Automatic Usage
+==
+
+To run multiple configurations at once, and keep track of when each
+configuration was last updated, you can use the `finance_dl.update`
+tool.
+
+To display the update status, first create a `logs` directory and run:
+
+    python -m finance_dl.cli --config-module example_finance_dl_config --log-dir logs status
+
+Initially, this will indicate that none of the configurations have
+been updated.  To update a single configuration `myconfig`, run:
+
+    python -m finance_dl.cli --config-module example_finance_dl_config --log-dir logs update myconfig
+
+With a single configuration specified, this does the same thing as the
+`finance_dl.cli` tool, except that the log messages are written to
+`logs/myconfig.txt` and a `logs/myconfig.lastupdate` file is craeted
+if it is successful.
+
+If multiple configurations are specified, as in:
+
+    python -m finance_dl.cli --config-module example_finance_dl_config --log-dir logs update myconfig1 myconfig2
+
+then all specified configurations are run in parallel.
+
+To update all configurations, run:
+
+    python -m finance_dl.cli --config-module example_finance_dl_config --log-dir logs update --all
 
 License
 ==
