@@ -17,6 +17,18 @@ The following keys may be specified as part of the configuration dict:
   - `url`: FI Url value (refer to https://www.ofxhome.com/)
   - `username`: Username for your account.
   - `password`: Password for your account.
+  - `client_args`: Optional.  `dict` of additional arguments to pass to the
+    `ofxclient` library.  Some banks, such as Chase, require that the OFX
+    version be set to at least 103 and a unique client id be specified.  This
+    can be achieved using a `client_args` value of:
+
+        dict(
+            ofx_version='103',
+            id='64f0e0bfe04f1a2d32cbddc8d30a3017',
+        )
+
+    where `id` is a random hex string obtained from e.g.:
+    `openssl rand -hex 16`.
 
 - `output_directory`: Required.  Must be a `str` that specifies the path to the
   directory where OFX files are to be written.  If it does not exist, it will be
