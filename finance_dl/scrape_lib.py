@@ -14,7 +14,7 @@ import signal
 
 from selenium.webdriver.remote.webdriver import WebDriver
 
-from selenium.common.exceptions import NoSuchElementException
+from selenium.common.exceptions import NoSuchElementException, StaleElementReferenceException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 
@@ -125,6 +125,18 @@ def attach_to_session(executor_url, session_id):
     # Replace the patched function with original function
     WebDriver.execute = original_execute
     return driver
+
+
+def is_displayed(element):
+    """Returns `True` if `element` is displayed.
+
+    Ignores StaleElementReferenceException.
+    """
+
+    try:
+        return element.is_displayed()
+    except StaleElementReferenceException:
+        return False
 
 
 class Scraper(object):
@@ -242,10 +254,7 @@ class Scraper(object):
             def condition(locator=locator):
                 element = self.driver.find_element(*locator)
                 if only_displayed:
-                    try:
-                        if not element.is_displayed():
-                            raise NoSuchElementException
-                    except:
+                    if not is_displayed(element):
                         raise NoSuchElementException
                 return element
 
@@ -284,7 +293,7 @@ class Scraper(object):
                 for element in self.driver.find_elements(by_method, locator):
                     if only_displayed:
                         try:
-                            if not element.is_displayed():
+                            if not is_displayed(element):
                                 continue
                         except:
                             import traceback
@@ -320,13 +329,13 @@ class Scraper(object):
     def find_username_and_password(self):
         passwords = self.driver.find_elements(By.XPATH,
                                               '//input[@type="password"]')
-        passwords = [x for x in passwords if x.is_displayed()]
+        passwords = [x for x in passwords if is_displayed(x)]
         if len(passwords) == 0:
             raise NoSuchElementException()
         password = passwords[0]
         username = password.find_elements(
             By.XPATH, 'preceding::input[@type="text" or @type="email"]')[-1]
-        if not username.is_displayed():
+        if not is_displayed(username):
             raise NoSuchElementException()
         return username, password
 
@@ -349,7 +358,7 @@ class Scraper(object):
             "//text()[contains(.,%r)]/ancestor::*[self::%s][1]" %
             (text, element_name))
         if only_displayed:
-            return [x for x in all_elements if x.is_displayed()]
+            return [x for x in all_elements if is_displayed(x)]
         return all_elements
 
     def find_elements_by_descendant_text_match(self, text_match, element_name,
@@ -358,17 +367,17 @@ class Scraper(object):
             "//text()[%s]/ancestor::*[self::%s][1]" % (text_match,
                                                        element_name))
         if only_displayed:
-            return [x for x in all_elements if x.is_displayed()]
+            return [x for x in all_elements if is_displayed(x)]
         return all_elements
 
     def find_visible_elements_by_partial_text(self, text, element_name):
         all_elements = self.driver.find_elements_by_xpath(
             "//%s[contains(.,%r)]" % (element_name, text))
-        return [x for x in all_elements if x.is_displayed()]
+        return [x for x in all_elements if is_displayed(x)]
 
     def find_visible_elements(self, by_method, locator):
         elements = self.driver.find_elements(by_method, locator)
-        return [x for x in elements if x.is_displayed()]
+        return [x for x in elements if is_displayed(x)]
 
     def click(self, link):
         self.driver.execute_script('arguments[0].scrollIntoView(true);', link)
