@@ -58,6 +58,7 @@ import os
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import Select
 from selenium.webdriver.common.keys import Keys
+from atomicwrites import atomic_write
 from . import scrape_lib
 
 logger = logging.getLogger('amazon_scrape')
@@ -220,11 +221,9 @@ class Scraper(scrape_lib.Scraper):
             if order_id not in page_source:
                 raise ValueError('Failed to retrieve information for order %r'
                                  % (order_id, ))
-
-            output_tmp = invoice_path + '.tmp'
-            with open(output_tmp, 'w') as f:
-                f.write(self.driver.page_source)
-            os.rename(output_tmp, invoice_path)
+            with atomic_write(invoice_path, mode='w') as f:
+                # Write with Unicode Byte Order Mark to ensure content will be properly interpreted as UTF-8
+                f.write('\ufeff' + page_source)
             logger.info('  Wrote %s', invoice_path)
 
     def run(self):

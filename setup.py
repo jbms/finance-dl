@@ -30,5 +30,6 @@ setup(
         'selenium-requests',
         'chromedriver_installer',
         'beancount>=2.1.2',
+        'atomicwrites',
     ],
 )
