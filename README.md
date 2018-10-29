@@ -24,6 +24,9 @@ Supported data sources
 - [finance_dl.healthequity](finance_dl/healthequity.py): downloads
   transaction history and balance information from the HealthEquity
   website.
+- [finance_dl.google_purchases](finance_dl/google_purchases.py):
+  downloads purchases that Google has heuristically extracted from
+  Gmail messages.
 
 Setup
 ==

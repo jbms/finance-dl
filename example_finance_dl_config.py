@@ -89,3 +89,14 @@ def CONFIG_venmo():
         # enter multi-factor authentication code each time.
         profile_dir=os.path.join(profile_dir, 'venmo'),
     )
+
+
+def CONFIG_google_purchases():
+    return dict(
+        module='finance_dl.google_purchases',
+        credentials={
+            'username': 'XXXXXX',
+            'password': 'XXXXXX',
+        },
+        output_directory=os.path.join(data_dir, 'google_purchases'),
+    )
