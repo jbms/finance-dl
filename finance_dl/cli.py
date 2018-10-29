@@ -57,6 +57,7 @@ def main():
     headless = not args.visible
     if args.interactive:
         headless = False
+    spec.setdefault('headless', headless)
 
     if args.interactive:
 
@@ -78,7 +79,7 @@ def main():
 
         interactive_func = getattr(module, 'interactive', None)
         if interactive_func is not None:
-            with interactive_func(**spec, headless=headless) as ns:
+            with interactive_func(**spec) as ns:
                 run_interactive_shell(**ns)
         else:
             run_interactive_shell()
