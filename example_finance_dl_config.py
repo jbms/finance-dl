@@ -91,6 +91,17 @@ def CONFIG_venmo():
     )
 
 
+def CONFIG_paypal():
+    return dict(
+        module='finance_dl.paypal',
+        credentials={
+            'username': 'XXXXXX',
+            'password': 'XXXXXX',
+        },
+        output_directory=os.path.join(data_dir, 'paypal'),
+    )
+
+
 def CONFIG_google_purchases():
     return dict(
         module='finance_dl.google_purchases',
