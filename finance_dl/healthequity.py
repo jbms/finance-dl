@@ -262,7 +262,7 @@ class Scraper(scrape_lib.Scraper):
         (start_date,), = self.wait_and_return(
             lambda: self.find_visible_elements(By.XPATH, '//input[@type="text" and contains(@id, "dateSelectStart")]'))
         start_date.clear()
-        start_date.send_keys('01/01/1900')
+        start_date.send_keys('01011900')
         logger.info('Downloading fund activity')
         (download_link, ), = self.wait_and_return(
             lambda: self.driver.find_elements_by_link_text('Download'))
