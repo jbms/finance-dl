@@ -29,6 +29,9 @@ Supported data sources
 - [finance_dl.google_purchases](finance_dl/google_purchases.py):
   downloads purchases that Google has heuristically extracted from
   Gmail messages.
+- [finance_dl.stockplanconnect](finance_dl/stockplanconnect.py):
+  downloads PDF documents (including release and trade confirmations)
+  from the Morgan Stanley Stockplanconnect website.
 - [finance_dl.pge](finance_dl/pge.py): downloads Pacific Gas &
   Electric (PG&E) PDF bills.
 - [finance_dl.comcast](finance_dl/comcast.py): downloads Comcast PDF

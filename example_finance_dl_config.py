@@ -113,6 +113,18 @@ def CONFIG_google_purchases():
     )
 
 
+def CONFIG_stockplanconnect():
+    return dict(
+        module='finance_dl.stockplanconnect',
+        credentials={
+            'username': 'XXXXXX',
+            'password': 'XXXXXX',
+        },
+        output_directory=os.path.join(data_dir, 'stockplanconnect'),
+        headless=False,
+    )
+
+
 def CONFIG_pge():
     return dict(
         module='finance_dl.pge',
