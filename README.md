@@ -33,6 +33,8 @@ Supported data sources
   Electric (PG&E) PDF bills.
 - [finance_dl.comcast](finance_dl/comcast.py): downloads Comcast PDF
   bills.
+- [finance_dl.ebmud](finance_dl/ebmud.py): downloads East Bay
+  Municipal Utility District (EBMUD) water bills.
 
 Setup
 ==

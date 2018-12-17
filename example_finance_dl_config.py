@@ -133,3 +133,14 @@ def CONFIG_comcast():
         },
         output_directory=os.path.join(data_dir, 'comcast'),
     )
+
+
+def CONFIG_ebmud():
+    return dict(
+        module='finance_dl.ebmud',
+        credentials={
+            'username': 'XXXXXX',
+            'password': 'XXXXXX',
+        },
+        output_directory=os.path.join(data_dir, 'ebmud'),
+    )
