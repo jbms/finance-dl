@@ -111,3 +111,14 @@ def CONFIG_google_purchases():
         },
         output_directory=os.path.join(data_dir, 'google_purchases'),
     )
+
+
+def CONFIG_comcast():
+    return dict(
+        module='finance_dl.comcast',
+        credentials={
+            'username': 'XXXXXX',
+            'password': 'XXXXXX',
+        },
+        output_directory=os.path.join(data_dir, 'comcast'),
+    )

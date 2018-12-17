@@ -29,6 +29,8 @@ Supported data sources
 - [finance_dl.google_purchases](finance_dl/google_purchases.py):
   downloads purchases that Google has heuristically extracted from
   Gmail messages.
+- [finance_dl.comcast](finance_dl/comcast.py): downloads Comcast PDF
+  bills.
 
 Setup
 ==
