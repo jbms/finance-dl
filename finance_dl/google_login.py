@@ -13,7 +13,14 @@ logger = logging.getLogger('google_login')
 
 def login(scraper: scrape_lib.Scraper, login_url: str):
     logger.info('Initiating log in')
-    scraper.driver.get(login_url)
+    with scraper.wait_for_page_load():
+        scraper.driver.get(login_url)
+
+    cur_url = scraper.driver.current_url
+    if not cur_url.startswith('https://accounts.google.com/'):
+        logger.info('Assuming already logged in due to url of %s', cur_url)
+        return
+
     logger.info('Waiting for username field')
 
     def find_username_or_other_account_button():
