@@ -18,6 +18,7 @@ setup(
     entry_points={
         'console_scripts': [
             'finance-dl = finance_dl.cli:main',
+            'finance-dl-chromedriver-wrapper = finance_dl.chromedriver_wrapper:main',
         ],
     },
     python_requires='>=3.5',

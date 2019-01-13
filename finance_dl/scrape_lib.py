@@ -183,8 +183,7 @@ class Scraper(object):
         else:
             driver_class = webdriver.Chrome
         self.driver = driver_class(
-            executable_path=os.path.join(
-                os.path.dirname(__file__), 'chromedriver_wrapper.py'),
+            executable_path='finance-dl-chromedriver-wrapper',
             chrome_options=chrome_options,
             service_args=service_args,
         )
