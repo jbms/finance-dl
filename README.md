@@ -103,12 +103,12 @@ tool.
 
 To display the update status, first create a `logs` directory and run:
 
-    python -m finance_dl.cli --config-module example_finance_dl_config --log-dir logs status
+    python -m finance_dl.update --config-module example_finance_dl_config --log-dir logs status
 
 Initially, this will indicate that none of the configurations have
 been updated.  To update a single configuration `myconfig`, run:
 
-    python -m finance_dl.cli --config-module example_finance_dl_config --log-dir logs update myconfig
+    python -m finance_dl.update --config-module example_finance_dl_config --log-dir logs update myconfig
 
 With a single configuration specified, this does the same thing as the
 `finance_dl.cli` tool, except that the log messages are written to
@@ -117,13 +117,13 @@ if it is successful.
 
 If multiple configurations are specified, as in:
 
-    python -m finance_dl.cli --config-module example_finance_dl_config --log-dir logs update myconfig1 myconfig2
+    python -m finance_dl.update --config-module example_finance_dl_config --log-dir logs update myconfig1 myconfig2
 
 then all specified configurations are run in parallel.
 
 To update all configurations, run:
 
-    python -m finance_dl.cli --config-module example_finance_dl_config --log-dir logs update --all
+    python -m finance_dl.update --config-module example_finance_dl_config --log-dir logs update --all
 
 License
 ==
