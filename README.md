@@ -4,7 +4,7 @@ institutions.
 [![License: GPL v2](https://img.shields.io/badge/License-GPL%20v2-blue.svg)](LICENSE)
 [![Build Status](https://travis-ci.com/jbms/finance-dl.svg?branch=master)](https://travis-ci.com/jbms/finance-dl)
 
-This package may be useful on its, but is specifically designed to be
+This package may be useful on its own, but is specifically designed to be
 used with
 [beancount-import](https://github.com/jbms/beancount-import).
 
@@ -112,7 +112,7 @@ been updated.  To update a single configuration `myconfig`, run:
 
 With a single configuration specified, this does the same thing as the
 `finance_dl.cli` tool, except that the log messages are written to
-`logs/myconfig.txt` and a `logs/myconfig.lastupdate` file is craeted
+`logs/myconfig.txt` and a `logs/myconfig.lastupdate` file is created
 if it is successful.
 
 If multiple configurations are specified, as in:
