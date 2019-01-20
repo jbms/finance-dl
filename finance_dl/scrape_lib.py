@@ -158,11 +158,11 @@ class Scraper(object):
         chrome_options = webdriver.ChromeOptions()
         service_args = []
         chrome_options.add_experimental_option('excludeSwitches', [
-            # 'enable-automation',
-            # 'load-extension',
-            # 'load-component-extension',
+            'enable-automation',
+            'load-extension',
+            'load-component-extension',
             'ignore-certificate-errors',
-            # 'test-type',
+            'test-type',
         ])
         if profile_dir is not None:
             chrome_options.add_argument('user-data-dir=%s' % profile_dir)
