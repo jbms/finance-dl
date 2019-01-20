@@ -38,6 +38,8 @@ Supported data sources
   bills.
 - [finance_dl.ebmud](finance_dl/ebmud.py): downloads East Bay
   Municipal Utility District (EBMUD) water bills.
+- [finance_dl.anthem](finance_dl/anthem.py): downloads Anthem
+  BlueCross insurance claim statements.
 
 Setup
 ==
