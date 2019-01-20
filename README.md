@@ -40,6 +40,10 @@ Supported data sources
   Municipal Utility District (EBMUD) water bills.
 - [finance_dl.anthem](finance_dl/anthem.py): downloads Anthem
   BlueCross insurance claim statements.
+- [finance_dl.waveapps](finance_dl/waveapps.py): downloads receipt
+  images and extracted transaction data from
+  [Wave](https://waveapps.com), which is a free receipt-scanning
+  website/mobile app.
 
 Setup
 ==
