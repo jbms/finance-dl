@@ -156,3 +156,13 @@ def CONFIG_ebmud():
         },
         output_directory=os.path.join(data_dir, 'ebmud'),
     )
+
+
+def CONFIG_anthem():
+    return dict(
+        module='finance_dl.anthem',
+        login_url='https://anthem.com',
+        output_directory=os.path.join(data_dir, 'anthem'),
+        profile_dir=os.path.join(profile_dir, 'anthem'),
+        headless=False,
+    )
