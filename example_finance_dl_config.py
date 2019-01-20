@@ -166,3 +166,13 @@ def CONFIG_anthem():
         profile_dir=os.path.join(profile_dir, 'anthem'),
         headless=False,
     )
+
+
+def CONFIG_waveapps():
+    return dict(
+        module='finance_dl.waveapps',
+        credentials=dict(
+            token='XXXXXXXX',
+        ),
+        output_directory=os.path.join(data_dir, 'waveapps'),
+    )
