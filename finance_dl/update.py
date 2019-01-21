@@ -18,16 +18,11 @@ def _format_duration(count) -> str:
     return '%d minutes' % (count // 60)
 
 
-class App(object):
+class CommandBase:
     def __init__(self, args):
         self.args = args
         self.config_module = importlib.import_module(args.config_module)
         self.log_dir = args.log_dir
-        self._print_lock = threading.Lock()
-
-    def print_message(self, message):
-        with self._print_lock:
-            print(message)
 
     def get_all_configs(self) -> List[str]:
         names = []
@@ -49,7 +44,12 @@ class App(object):
         except OSError:
             return None
 
-    def command_status(self):
+
+class StatusCommand(CommandBase):
+    def __init__(self, args):
+        super().__init__(args)
+
+    def __call__(self):
         cur_time = time.time()
         config_names = self.get_all_configs()
         max_name_len = max(len(x) for x in config_names)
@@ -71,56 +71,99 @@ class App(object):
                 update_string = 'NEVER'
             print('%*s: %s' % (max_name_len, name, update_string))
 
-    def run_config(self, config):
-        self.print_message('%s: starting' % config)
-        start_time = time.time()
-        try:
-            with open(self.get_log_path(config), 'wb') as f:
-                subprocess.check_call([
-                    sys.executable, '-m', 'finance_dl.cli', '--config-module',
-                    self.args.config_module, '-c', config
-                ], stdout=f, stderr=f)
-            success = True
-            with open(self.get_last_update_path(config), 'w') as f:
-                pass
-        except:
-            success = False
-        end_time = time.time()
-        success_message = 'SUCCESS' if success else 'FAILED'
-        self.print_message(
-            '%s: %s in %d seconds' % (config, success_message,
-                                      int(end_time - start_time)))
 
-    def command_update(self):
+class Updater(CommandBase):
+    def __init__(self, args):
+        super().__init__(args)
         force = self.args.force
         cur_time = time.time()
         configs = self.args.config
         if self.args.all:
             configs = self.get_all_configs()
+        configs_to_update = []
+        for config in configs:
+            mtime = self.get_last_update_time(config)
+            if not force and mtime is not None and (
+                    cur_time - mtime) < 24 * 60 * 60:
+                print('%s: SKIPPING (updated %s ago)' %
+                      (config, _format_duration(cur_time - mtime)))
+                continue
+            configs_to_update.append(config)
+        self.configs_to_update = configs_to_update
+        self._lock = threading.Lock()
+        self.configs_completed = 0
+
+    def print_message(self, config, start_time, message, completed=False):
+        with self._lock:
+            if completed:
+                self.configs_completed += 1
+            print('[%d/%d] %s [%.fs elapsed] %s' %
+                  (self.configs_completed, len(self.configs_to_update), config,
+                   time.time() - start_time, message.rstrip()))
+
+    def run_config(self, config):
+        start_time = time.time()
+        self.print_message(config, start_time, 'starting')
+        success = False
+        termination_message = 'SUCCESS'
+        try:
+            with open(self.get_log_path(config), 'w') as f:
+                process = subprocess.Popen(
+                    [
+                        sys.executable, '-m', 'finance_dl.cli',
+                        '--config-module', self.args.config_module, '-c',
+                        config
+                    ],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    bufsize=1,
+                    universal_newlines=True,
+                )
+                for line in process.stdout:
+                    self.print_message(config, start_time, line.rstrip())
+                    f.write(line)
+                process.wait()
+                if process.returncode == 0:
+                    success = True
+                    with open(self.get_last_update_path(config), 'w') as f:
+                        pass
+                else:
+                    termination_message = 'FAILED with return code %d' % (process.returncode)
+
+        except:
+            termination_message = 'FAILED with exception'
+        self.print_message(config, start_time, termination_message,
+                           completed=True)
+
+    def __call__(self):
         with concurrent.futures.ThreadPoolExecutor(
-                max_workers=100) as executor:
-            for config in configs:
-                mtime = self.get_last_update_time(config)
-                if not force and mtime is not None and (
-                        cur_time - mtime) < 24 * 60 * 60:
-                    print('%s: SKIPPING (updated %s ago)' %
-                          (config, _format_duration(cur_time - mtime)))
-                    continue
+                max_workers=self.args.parallelism) as executor:
+            for config in self.configs_to_update:
                 executor.submit(self.run_config, config)
 
 
 def main():
-    ap = argparse.ArgumentParser()
+    ap = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     ap.add_argument('--config-module', type=str, required=True,
                     help='Python module defining CONFIG_<name> functions.')
     ap.add_argument('--log-dir', type=str, required=True,
                     help='Directory containing log files.')
 
-    subparsers = ap.add_subparsers(dest='command')
+    subparsers = ap.add_subparsers(dest='command', required=True)
 
-    ap_status = subparsers.add_parser('status', help='Show update status.')
+    ap_status = subparsers.add_parser(
+        'status',
+        help='Show update status.',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    ap_status.set_defaults(command_class=StatusCommand)
 
-    ap_update = subparsers.add_parser('update', help='Update configurations.')
+    ap_update = subparsers.add_parser(
+        'update',
+        help='Update configurations.',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
     ap_update.add_argument('config', nargs='*', type=str, default=[],
                            help='Configuration to update')
     ap_update.add_argument(
@@ -129,16 +172,15 @@ def main():
     )
     ap_update.add_argument('-a', '--all', action='store_true',
                            help='Update all configurations.')
+    ap_update.add_argument(
+        '-p', '--parallelism', type=int, default=4,
+        help='Maximum number of configurations to update in parallel.')
+    ap_update.set_defaults(command_class=Updater)
 
     args = ap.parse_args()
 
-    app = App(args)
-
-    if args.command:
-        getattr(app, 'command_%s' % args.command)()
-    else:
-        ap.print_help()
-        sys.exit(1)
+    command = args.command_class(args)
+    command()
 
 
 if __name__ == '__main__':
