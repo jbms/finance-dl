@@ -140,14 +140,15 @@ class Scraper(scrape_lib.Scraper):
 
         bills_link = get_bills_link()
 
-        try:
-            continue_link, = self.find_visible_elements_by_descendant_partial_text(
-                'Check it out', 'button')
-            continue_link.click()
-            time.sleep(3.0)  # wait for overlay to go away
-            bills_link = get_bills_link()
-        except:
-            pass
+        for partial_text in ['Check it out', 'Continue To My Account']:
+            try:
+                continue_link, = self.find_visible_elements_by_descendant_partial_text(
+                    partial_text, 'button')
+                continue_link.click()
+                time.sleep(3.0)  # wait for overlay to go away
+            except:
+                pass
+        bills_link = get_bills_link()
 
         self.driver.find_element_by_tag_name('body').send_keys(Keys.ESCAPE)
         bills_link.click()
