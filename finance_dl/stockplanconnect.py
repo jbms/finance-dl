@@ -42,6 +42,12 @@ appended, e.g.:
     2018-06-28.Restricted_Units.Trade_Confirmations.Release_Confirmation.2.pdf
     2018-06-28.Restricted_Units.Trade_Confirmations.Release_Confirmation.3.pdf
 
+If for some reason this data source does not work and you wish to manually
+download documents, make sure to use the same name numbering scheme: the first
+document listed with a given date, document type, and name should be given no
+numeric suffix, the second such document should be given a suffix of `.2`, the
+third `.3`, etc.
+
 Example:
 ========
 
