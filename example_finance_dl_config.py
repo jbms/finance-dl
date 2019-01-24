@@ -176,3 +176,18 @@ def CONFIG_waveapps():
         ),
         output_directory=os.path.join(data_dir, 'waveapps'),
     )
+
+
+def CONFIG_google_payroll():
+    return dict(
+        module='finance_dl.ultipro_google',
+        credentials={
+            'username': 'XXXXXX',
+            'password': 'XXXXXX',
+        },
+        output_directory=os.path.join(data_dir, 'documents', 'Income',
+                                      'Google'),
+
+        # profile_dir is optional but recommended.
+        profile_dir=os.path.join(profile_dir, 'google_payroll'),
+    )

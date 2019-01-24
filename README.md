@@ -44,6 +44,8 @@ Supported data sources
   images and extracted transaction data from
   [Wave](https://waveapps.com), which is a free receipt-scanning
   website/mobile app.
+- [finance_dl.ultipro_google](finance_dl/ultipro_google.py): downloads
+  Google employee payroll statements in PDF format from Ultipro.
 
 Setup
 ==
