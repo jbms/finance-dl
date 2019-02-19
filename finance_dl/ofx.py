@@ -1,6 +1,6 @@
 """Retrieves OFX transaction and balance information using the OFX protocol.
 
-This module uses the `ofxclient` Python packaeg to connect directly to financial
+This module uses the `ofxclient` Python package to connect directly to financial
 institutions that support the OFX protocol.
 
 Refer to https://www.ofxhome.com/ to search for OFX connection information for
