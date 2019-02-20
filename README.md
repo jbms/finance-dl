@@ -99,7 +99,7 @@ manually complete the login process and enter any multi-factor
 authentication code that is required.
 
 To debug a scraper, you can run it in interactive mode by specifying
-the `-i` command-line arugment.  This runs an interactive IPython
+the `-i` command-line argument.  This runs an interactive IPython
 shell that lets you manually invoke parts of the scraping process.
 
 Automatic Usage
