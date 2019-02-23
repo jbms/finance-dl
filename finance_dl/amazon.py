@@ -63,8 +63,14 @@ from . import scrape_lib
 
 logger = logging.getLogger('amazon_scrape')
 
+
+class Domain:
+    COM = 'com'
+    CO_UK = 'co.uk'
+
+
 class Scraper(scrape_lib.Scraper):
-    def __init__(self, credentials, output_directory, amazon_domain='com', **kwargs):
+    def __init__(self, credentials, output_directory, amazon_domain=Domain.COM, **kwargs):
         super().__init__(**kwargs)
         self.credentials = credentials
         self.output_directory = output_directory
@@ -127,8 +133,13 @@ class Scraper(scrape_lib.Scraper):
             while True:
 
                 def invoice_finder():
-                    return self.find_elements_by_descendant_text_match(
-                        '. = "Invoice"', 'a', only_displayed=True)
+                    if self.amazon_domain == Domain.CO_UK:
+                        # on amazon.co.uk there are no direct invoice links
+                        # clicking causes some js to execute and show popup window
+                        return self.driver.find_elements(By.XPATH, '//a[contains(@href, "summary/print.html")]')
+                    else:
+                        return self.find_elements_by_descendant_text_match(
+                            '. = "Invoice"', 'a', only_displayed=True)
 
                 if initial_iteration:
                     invoices = invoice_finder()
@@ -190,10 +201,19 @@ class Scraper(scrape_lib.Scraper):
                     break
 
         if regular:
-            (orders_link,), = self.wait_and_return(
-                lambda: self.find_elements_by_descendant_text_match('. = "Orders"', 'a', only_displayed=True)
-            )
-            scrape_lib.retry(lambda: self.click(orders_link), retry_delay=2)
+            if self.amazon_domain == Domain.CO_UK:
+                # on co.uk, orders link is hidden behind the menu, hence not directly clickable
+                (orders_link,), = self.wait_and_return(
+                    lambda: self.find_elements_by_descendant_text_match('. = "Your Orders"', 'a', only_displayed=False)
+                )
+                link = orders_link.get_attribute('href')
+                scrape_lib.retry(lambda: self.driver.get(link), retry_delay=2)
+            else:
+                (orders_link,), = self.wait_and_return(
+                    lambda: self.find_elements_by_descendant_text_match('. = "Orders"', 'a', only_displayed=True)
+                )
+                scrape_lib.retry(lambda: self.click(orders_link), retry_delay=2)
+
             retrieve_all_order_groups()
 
         if digital:
@@ -231,11 +251,11 @@ class Scraper(scrape_lib.Scraper):
                 f.write('\ufeff' + page_source)
             logger.info('  Wrote %s', invoice_path)
 
-    def run(self):
+    def run(self, *args, **kwargs):
         self.login()
         if not os.path.exists(self.output_directory):
             os.makedirs(self.output_directory)
-        self.get_orders()
+        self.get_orders(*args, **kwargs)
 
 
 def run(**kwargs):
