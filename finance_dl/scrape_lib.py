@@ -140,9 +140,8 @@ def is_displayed(element):
 
 
 class Scraper(object):
-    def __init__(self, download_dir=None, connect=None, headless=True,
-                 use_seleniumrequests=False, session_id=None,
-                 profile_dir=None):
+    def __init__(self, download_dir=None, connect=None, chromedriver_bin='finance-dl-chromedriver-wrapper',
+                 headless=True, use_seleniumrequests=False, session_id=None, profile_dir=None):
 
         self.download_dir = download_dir
 
@@ -155,6 +154,7 @@ class Scraper(object):
         original_sigint_handler = signal.getsignal(signal.SIGINT)
         signal.signal(signal.SIGINT, signal.SIG_IGN)
 
+        self.chromedriver_bin = chromedriver_bin
         chrome_options = webdriver.ChromeOptions()
         service_args = []
         chrome_options.add_experimental_option('excludeSwitches', [
@@ -183,7 +183,7 @@ class Scraper(object):
         else:
             driver_class = webdriver.Chrome
         self.driver = driver_class(
-            executable_path='finance-dl-chromedriver-wrapper',
+            executable_path=self.chromedriver_bin,
             chrome_options=chrome_options,
             service_args=service_args,
         )
