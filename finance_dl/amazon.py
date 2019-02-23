@@ -1,4 +1,4 @@
-"""Retrieves order invoices from Amazon.com.
+"""Retrieves order invoices from Amazon.
 
 This uses the `selenium` Python package in conjunction with `chromedriver` to
 scrape the Venmo website.
@@ -63,28 +63,26 @@ from . import scrape_lib
 
 logger = logging.getLogger('amazon_scrape')
 
-netloc_re = r'^([^\.@]+\.)*amazon.com$'
-
-
-def check_url(url):
-    result = urllib.parse.urlparse(url)
-    if result.scheme != 'https' or not re.fullmatch(netloc_re, result.netloc):
-        raise RuntimeError('Reached invalid URL: %r' % url)
-
-
 class Scraper(scrape_lib.Scraper):
-    def __init__(self, credentials, output_directory, **kwargs):
+    def __init__(self, credentials, output_directory, amazon_domain='com', **kwargs):
         super().__init__(**kwargs)
         self.credentials = credentials
         self.output_directory = output_directory
         self.logged_in = False
+        self.amazon_domain = amazon_domain
+
+    def check_url(self, url):
+        netloc_re = r'^([^\.@]+\.)*amazon.' + self.amazon_domain + '$'
+        result = urllib.parse.urlparse(url)
+        if result.scheme != 'https' or not re.fullmatch(netloc_re, result.netloc):
+            raise RuntimeError('Reached invalid URL: %r' % url)
 
     def check_after_wait(self):
-        check_url(self.driver.current_url)
+        self.check_url(self.driver.current_url)
 
     def login(self):
         logger.info('Initiating log in')
-        self.driver.get('https://www.amazon.com')
+        self.driver.get('https://www.amazon.' + self.amazon_domain)
         if self.logged_in:
             return
 
