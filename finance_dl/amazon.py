@@ -83,10 +83,10 @@ class Scraper(scrape_lib.Scraper):
         check_url(self.driver.current_url)
 
     def login(self):
-        if self.logged_in:
-            return
         logger.info('Initiating log in')
         self.driver.get('https://www.amazon.com')
+        if self.logged_in:
+            return
 
         logger.info('Looking for sign-in link')
         sign_in_links, = self.wait_and_return(
@@ -99,14 +99,21 @@ class Scraper(scrape_lib.Scraper):
             lambda: self.find_visible_elements(By.XPATH, '//input[@type="email"]')
         )
         username.send_keys(self.credentials['username'])
-        username.send_keys(Keys.ENTER)
 
         logger.info('Looking for password link')
         (password, ), = self.wait_and_return(
             lambda: self.find_visible_elements(By.XPATH, '//input[@type="password"]')
         )
         password.send_keys(self.credentials['password'])
+
+        logger.info('Looking for "remember me" checkbox')
+        (rememberMe, ) = self.wait_and_return(
+            lambda: self.find_visible_elements(By.XPATH, '//input[@name="rememberMe"]')[0]
+        )
+        rememberMe.click()
+
         password.send_keys(Keys.ENTER)
+
         logger.info('Logged in')
         self.logged_in = True
 
