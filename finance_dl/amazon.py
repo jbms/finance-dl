@@ -95,6 +95,12 @@ class Scraper(scrape_lib.Scraper):
         if self.logged_in:
             return
 
+        sign_out_links = self.find_elements_by_descendant_partial_text('Sign Out', 'a')
+        if len(sign_out_links) > 0:
+            logger.info('You must be already logged in!')
+            self.logged_in = True
+            return
+
         logger.info('Looking for sign-in link')
         sign_in_links, = self.wait_and_return(
             lambda: self.find_visible_elements_by_descendant_partial_text('Sign in', 'a')
