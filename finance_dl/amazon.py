@@ -70,12 +70,15 @@ class Domain:
 
 
 class Scraper(scrape_lib.Scraper):
-    def __init__(self, credentials, output_directory, amazon_domain=Domain.COM, **kwargs):
+    def __init__(self, credentials, output_directory, amazon_domain=Domain.COM, regular=True, digital=None, **kwargs):
         super().__init__(**kwargs)
+        default_digital = True if amazon_domain == Domain.COM else False
         self.credentials = credentials
         self.output_directory = output_directory
         self.logged_in = False
         self.amazon_domain = amazon_domain
+        self.regular = regular
+        self.digital = digital if digital is not None else default_digital
 
     def check_url(self, url):
         netloc_re = r'^([^\.@]+\.)*amazon.' + self.amazon_domain + '$'
@@ -251,11 +254,11 @@ class Scraper(scrape_lib.Scraper):
                 f.write('\ufeff' + page_source)
             logger.info('  Wrote %s', invoice_path)
 
-    def run(self, *args, **kwargs):
+    def run(self):
         self.login()
         if not os.path.exists(self.output_directory):
             os.makedirs(self.output_directory)
-        self.get_orders(*args, **kwargs)
+        self.get_orders(regular=self.regular, digital=self.digital)
 
 
 def run(**kwargs):
