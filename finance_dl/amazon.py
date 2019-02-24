@@ -1,4 +1,4 @@
-"""Retrieves order invoices from Amazon.com.
+"""Retrieves order invoices from Amazon.
 
 This uses the `selenium` Python package in conjunction with `chromedriver` to
 scrape the Venmo website.
@@ -63,30 +63,43 @@ from . import scrape_lib
 
 logger = logging.getLogger('amazon_scrape')
 
-netloc_re = r'^([^\.@]+\.)*amazon.com$'
 
-
-def check_url(url):
-    result = urllib.parse.urlparse(url)
-    if result.scheme != 'https' or not re.fullmatch(netloc_re, result.netloc):
-        raise RuntimeError('Reached invalid URL: %r' % url)
+class Domain:
+    COM = 'com'
+    CO_UK = 'co.uk'
 
 
 class Scraper(scrape_lib.Scraper):
-    def __init__(self, credentials, output_directory, **kwargs):
+    def __init__(self, credentials, output_directory, amazon_domain=Domain.COM, regular=True, digital=None, **kwargs):
         super().__init__(**kwargs)
+        default_digital = True if amazon_domain == Domain.COM else False
         self.credentials = credentials
         self.output_directory = output_directory
         self.logged_in = False
+        self.amazon_domain = amazon_domain
+        self.regular = regular
+        self.digital = digital if digital is not None else default_digital
+
+    def check_url(self, url):
+        netloc_re = r'^([^\.@]+\.)*amazon.' + self.amazon_domain + '$'
+        result = urllib.parse.urlparse(url)
+        if result.scheme != 'https' or not re.fullmatch(netloc_re, result.netloc):
+            raise RuntimeError('Reached invalid URL: %r' % url)
 
     def check_after_wait(self):
-        check_url(self.driver.current_url)
+        self.check_url(self.driver.current_url)
 
     def login(self):
+        logger.info('Initiating log in')
+        self.driver.get('https://www.amazon.' + self.amazon_domain)
         if self.logged_in:
             return
-        logger.info('Initiating log in')
-        self.driver.get('https://www.amazon.com')
+
+        sign_out_links = self.find_elements_by_descendant_partial_text('Sign Out', 'a')
+        if len(sign_out_links) > 0:
+            logger.info('You must be already logged in!')
+            self.logged_in = True
+            return
 
         logger.info('Looking for sign-in link')
         sign_in_links, = self.wait_and_return(
@@ -99,14 +112,21 @@ class Scraper(scrape_lib.Scraper):
             lambda: self.find_visible_elements(By.XPATH, '//input[@type="email"]')
         )
         username.send_keys(self.credentials['username'])
-        username.send_keys(Keys.ENTER)
 
         logger.info('Looking for password link')
         (password, ), = self.wait_and_return(
             lambda: self.find_visible_elements(By.XPATH, '//input[@type="password"]')
         )
         password.send_keys(self.credentials['password'])
+
+        logger.info('Looking for "remember me" checkbox')
+        (rememberMe, ) = self.wait_and_return(
+            lambda: self.find_visible_elements(By.XPATH, '//input[@name="rememberMe"]')[0]
+        )
+        rememberMe.click()
+
         password.send_keys(Keys.ENTER)
+
         logger.info('Logged in')
         self.logged_in = True
 
@@ -122,8 +142,7 @@ class Scraper(scrape_lib.Scraper):
             while True:
 
                 def invoice_finder():
-                    return self.find_elements_by_descendant_text_match(
-                        '. = "Invoice"', 'a', only_displayed=True)
+                    return self.driver.find_elements(By.XPATH, '//a[contains(@href, "summary/print.html")]')
 
                 if initial_iteration:
                     invoices = invoice_finder()
@@ -185,10 +204,14 @@ class Scraper(scrape_lib.Scraper):
                     break
 
         if regular:
+            orders_text = "Your Orders" if self.amazon_domain == Domain.CO_UK else "Orders"
+            # on co.uk, orders link is hidden behind the menu, hence not directly clickable
             (orders_link,), = self.wait_and_return(
-                lambda: self.find_elements_by_descendant_text_match('. = "Orders"', 'a', only_displayed=True)
+                lambda: self.find_elements_by_descendant_text_match('. = "{}"'.format(orders_text), 'a', only_displayed=False)
             )
-            scrape_lib.retry(lambda: self.click(orders_link), retry_delay=2)
+            link = orders_link.get_attribute('href')
+            scrape_lib.retry(lambda: self.driver.get(link), retry_delay=2)
+
             retrieve_all_order_groups()
 
         if digital:
@@ -230,7 +253,7 @@ class Scraper(scrape_lib.Scraper):
         self.login()
         if not os.path.exists(self.output_directory):
             os.makedirs(self.output_directory)
-        self.get_orders()
+        self.get_orders(regular=self.regular, digital=self.digital)
 
 
 def run(**kwargs):
