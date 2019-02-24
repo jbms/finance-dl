@@ -136,13 +136,7 @@ class Scraper(scrape_lib.Scraper):
             while True:
 
                 def invoice_finder():
-                    if self.amazon_domain == Domain.CO_UK:
-                        # on amazon.co.uk there are no direct invoice links
-                        # clicking causes some js to execute and show popup window
-                        return self.driver.find_elements(By.XPATH, '//a[contains(@href, "summary/print.html")]')
-                    else:
-                        return self.find_elements_by_descendant_text_match(
-                            '. = "Invoice"', 'a', only_displayed=True)
+                    return self.driver.find_elements(By.XPATH, '//a[contains(@href, "summary/print.html")]')
 
                 if initial_iteration:
                     invoices = invoice_finder()
@@ -204,18 +198,13 @@ class Scraper(scrape_lib.Scraper):
                     break
 
         if regular:
-            if self.amazon_domain == Domain.CO_UK:
-                # on co.uk, orders link is hidden behind the menu, hence not directly clickable
-                (orders_link,), = self.wait_and_return(
-                    lambda: self.find_elements_by_descendant_text_match('. = "Your Orders"', 'a', only_displayed=False)
-                )
-                link = orders_link.get_attribute('href')
-                scrape_lib.retry(lambda: self.driver.get(link), retry_delay=2)
-            else:
-                (orders_link,), = self.wait_and_return(
-                    lambda: self.find_elements_by_descendant_text_match('. = "Orders"', 'a', only_displayed=True)
-                )
-                scrape_lib.retry(lambda: self.click(orders_link), retry_delay=2)
+            orders_text = "Your Orders" if self.amazon_domain == Domain.CO_UK else "Orders"
+            # on co.uk, orders link is hidden behind the menu, hence not directly clickable
+            (orders_link,), = self.wait_and_return(
+                lambda: self.find_elements_by_descendant_text_match('. = "{}"'.format(orders_text), 'a', only_displayed=False)
+            )
+            link = orders_link.get_attribute('href')
+            scrape_lib.retry(lambda: self.driver.get(link), retry_delay=2)
 
             retrieve_all_order_groups()
 
