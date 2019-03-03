@@ -6,6 +6,7 @@ shell.
 
 import os
 import sys
+import chromedriver_binary
 
 
 def main():

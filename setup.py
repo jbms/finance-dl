@@ -29,7 +29,7 @@ setup(
         'selenium',
         'ipython',
         'selenium-requests',
-        'chromedriver_installer',
+        'chromedriver-binary',
         'beancount>=2.1.2',
         'atomicwrites',
         'jsonschema',
