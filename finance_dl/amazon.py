@@ -1,7 +1,7 @@
 """Retrieves order invoices from Amazon.
 
 This uses the `selenium` Python package in conjunction with `chromedriver` to
-scrape the Venmo website.
+scrape the Amazon website.
 
 Configuration:
 ==============
@@ -14,6 +14,15 @@ The following keys may be specified as part of the configuration dict:
 - `output_directory`: Required.  Must be a `str` that specifies the path on the
   local filesystem where the output will be written.  If the directory does not
   exist, it will be created.
+
+- `amazon_domain`: Optional.  Specifies the Amazon domain from which to download
+  orders.  Must be one of `'.com'` or `'.co.cuk'`.  Defaults to `'.com'`.
+
+- `regular`: Optional.  Must be a `bool`.  If `True` (the default), download regular orders.
+
+- `digital`: Optional.  Must be a `bool` or `None`.  If `True`, download digital
+  orders.  Defaults to `None`, which is equivalent to `True` for
+  `amazon_domain=".com"`, and `False` for `amazon_domain=".co.uk"`.
 
 - `profile_dir`: Optional.  If specified, must be a `str` that specifies the
   path to a persistent Chrome browser profile to use.  This should be a path

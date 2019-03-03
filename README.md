@@ -22,7 +22,7 @@ Supported data sources
 - [finance_dl.paypal](finance_dl/paypal.py): downloads transactions
   from the Paypal.com website
 - [finance_dl.amazon](finance_dl/amazon.py): downloads order invoices
-  from the Amazon.com website
+  from the Amazon website
 - [finance_dl.healthequity](finance_dl/healthequity.py): downloads
   transaction history and balance information from the HealthEquity
   website.
