@@ -154,8 +154,8 @@ def get_ofx_date_range(data: bytes):
         raise RuntimeError(
             'More than one dtstart or dtend found in OFX document: %s' %
             (data, ))
-    dtstart = parse_ofx_time(dtstart_nodes[0].text)
-    dtend = parse_ofx_time(dtend_nodes[0].text)
+    dtstart = parse_ofx_time(dtstart_nodes[0].text.split("\r\n")[0])
+    dtend = parse_ofx_time(dtend_nodes[0].text.split("\r\n")[0])
     return dtstart, dtend
 
 
