@@ -9,7 +9,7 @@ setup(
     description='Tools for scraping personal financial data.',
     long_description=long_description,
     long_description_content_type='text/markdown',
-    version='1.1.0',
+    version='1.2.0',
     url='https://github.com/jbms/finance-dl',
     author='Jeremy Maitin-Shepard',
     author_email="jeremy@jeremyms.com",
