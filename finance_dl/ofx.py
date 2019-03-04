@@ -119,7 +119,7 @@ import dateutil.parser
 import ofxclient.institution
 import ofxclient
 
-from beancount.ingest.importers.ofx import parse_ofx_time
+from beancount.ingest.importers.ofx import parse_ofx_time, find_child
 
 warnings.filterwarnings('ignore', message='split()', module='re')
 
@@ -143,19 +143,13 @@ def download_account_data_starting_from(account: ofxclient.account.Account,
 
 def get_ofx_date_range(data: bytes):
     soup = bs4.BeautifulSoup(io.BytesIO(data), 'html.parser')
-    dtstart_nodes = list(soup.find_all('dtstart'))
-    dtend_nodes = list(soup.find_all('dtend'))
-    if len(dtstart_nodes) == 0 or len(dtend_nodes) == 0:
+    dtstart = find_child(soup, 'dtstart', parse_ofx_time)
+    dtend = find_child(soup, 'dtstart', parse_ofx_time)
+    if dtstart is None or dtend is None:
         logger.debug('Data received: %r', data)
         messages = soup.find_all('message')
         logger.info('Messages: %r', [message.text for message in messages])
         return None
-    if len(dtstart_nodes) != 1 or len(dtend_nodes) != 1:
-        raise RuntimeError(
-            'More than one dtstart or dtend found in OFX document: %s' %
-            (data, ))
-    dtstart = parse_ofx_time(dtstart_nodes[0].text)
-    dtend = parse_ofx_time(dtend_nodes[0].text)
     return dtstart, dtend
 
 
