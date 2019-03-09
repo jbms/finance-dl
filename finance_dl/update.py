@@ -150,7 +150,8 @@ def main():
     ap.add_argument('--log-dir', type=str, required=True,
                     help='Directory containing log files.')
 
-    subparsers = ap.add_subparsers(dest='command', required=True)
+    subparsers = ap.add_subparsers(dest='command')
+    subparsers.required = True
 
     ap_status = subparsers.add_parser(
         'status',
