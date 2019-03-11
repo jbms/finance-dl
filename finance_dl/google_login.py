@@ -21,34 +21,39 @@ def login(scraper: scrape_lib.Scraper, login_url: str):
         logger.info('Assuming already logged in due to url of %s', cur_url)
         return
 
-    logger.info('Waiting for username field')
+    logger.info('Waiting for username or password field')
 
     def find_username_or_other_account_button():
         username = scraper.find_visible_elements(By.XPATH,
                                                  '//input[@type="email"]')
+        password = scraper.find_visible_elements(By.XPATH,
+                                                 '//input[@type="password"]')
         other_account = scraper.find_visible_elements(
             By.XPATH, '//div[text()="Use another account"]')
         if len(username) == 1:
-            return username[0], None
+            return username[0], None, None
+        if len(password) == 1:
+            return None, password[0], None
         if len(other_account) == 1:
-            return None, other_account[0]
+            return None, None, other_account[0]
         return None
 
-    (username, other_account_button
+    (username, password, other_account_button
      ), = scraper.wait_and_return(find_username_or_other_account_button)
     if other_account_button:
         scraper.click(other_account_button)
         (username, ), = scraper.wait_and_return(
             lambda: scraper.find_visible_elements(By.XPATH, '//input[@type="email"]')
         )
-    logger.info('Entering username')
     credentials = cast(Any, scraper).credentials  # type:  Dict[str, str]
-    username.send_keys(credentials['username'])
-    username.send_keys(Keys.ENTER)
-    logger.info('Waiting for password field')
-    (password, ), = scraper.wait_and_return(
-        lambda: scraper.find_visible_elements(By.XPATH, '//input[@type="password"]')
-    )
+    if not password:
+        logger.info('Entering username')
+        username.send_keys(credentials['username'])
+        username.send_keys(Keys.ENTER)
+        logger.info('Waiting for password field')
+        (password, ), = scraper.wait_and_return(
+            lambda: scraper.find_visible_elements(By.XPATH, '//input[@type="password"]')
+        )
     logger.info('Entering password')
     password.send_keys(credentials['password'])
     password.send_keys(Keys.ENTER)
