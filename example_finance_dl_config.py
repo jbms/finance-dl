@@ -190,4 +190,7 @@ def CONFIG_google_payroll():
 
         # profile_dir is optional but recommended.
         profile_dir=os.path.join(profile_dir, 'google_payroll'),
+
+        # Recommended for greater reliability.
+        headless=False,
     )

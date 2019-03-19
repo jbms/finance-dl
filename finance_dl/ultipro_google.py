@@ -21,6 +21,10 @@ The following keys may be specified as part of the configuration dict:
   browser profile.  If not specified, a fresh temporary profile will be used
   each time.
 
+- `headless`: Optional.  If specified, must be a `bool`.  Defaults to `True`.
+  Indicates whether to use a headless browser.  Scraping appears to be more
+  reliable when this is set to `True`.
+
 Output format:
 ==============
 
@@ -46,6 +50,9 @@ Example:
 
             # profile_dir is optional but recommended.
             profile_dir=os.path.join(profile_dir, 'google_payroll'),
+
+            # Recommended for greater reliability.
+            headless=False,
         )
 
 Interactive shell:

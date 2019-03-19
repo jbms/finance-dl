@@ -25,6 +25,8 @@ The following keys may be specified as part of the configuration dict:
   browser profile.  If not specified, a fresh temporary profile will be used
   each time.
 
+- `headless`: Must be set to `False`, since this scraper requires manual input.
+
 Example:
 ========
 
