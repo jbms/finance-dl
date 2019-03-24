@@ -32,7 +32,7 @@ def merge_overlapping_csv_rows(csv_data_list, compare_fields):
 
 def write_csv(field_names, data, filename):
     tmp_filename = filename + '.tmp'
-    with open(tmp_filename, 'w', newline='') as f:
+    with open(tmp_filename, 'w', newline='', encoding='utf-8') as f:
         csv_writer = csv.DictWriter(f, field_names, lineterminator='\n',
                                     quoting=csv.QUOTE_ALL)
         csv_writer.writeheader()
@@ -47,7 +47,7 @@ def merge_into_file(filename,
         compare_fields = field_names
 
     if os.path.exists(filename):
-        with open(filename, 'r', newline='') as f:
+        with open(filename, 'r', newline='', encoding='utf-8') as f:
             reader = csv.DictReader(f)
             assert reader.fieldnames == field_names, (reader.fieldnames, field_names)
             existing_rows = list(reader)

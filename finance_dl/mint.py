@@ -374,10 +374,10 @@ def merge_mint_data(mint_data_list: Sequence[str]):
 def merge_mint_files(input_paths: Sequence[str], output_path: str):
     mint_data_list = []
     for filename in input_paths:
-        with open(filename, 'r') as f:
+        with open(filename, 'r', encoding='utf-8', newline='') as f:
             mint_data_list.append(f.read())
     csv_data = merge_mint_data(mint_data_list)
-    with open(output_path, 'w') as f:
+    with open(output_path, 'w', encoding='utf-8', newline='') as f:
         f.write(csv_data)
 
 
@@ -387,7 +387,7 @@ def verify_mint_update_consistency(csv_data: str, existing_filename: str,
 
     if os.path.exists(existing_filename):
         missing = False
-        with open(existing_filename, 'r') as f:
+        with open(existing_filename, 'r', encoding='utf-8', newline='') as f:
             old_data = f.read()
 
         def get_rows(data):
@@ -418,7 +418,7 @@ def verify_mint_update_consistency(csv_data: str, existing_filename: str,
             if missing and not allow_missing:
                 raise RuntimeError('New file is missing some existing entries')
     if not unchanged:
-        with open(existing_filename, 'w') as f:
+        with open(existing_filename, 'w', encoding='utf-8', newline='') as f:
             f.write(csv_data)
 
 
@@ -429,14 +429,14 @@ def fetch_mint_data(credentials: dict, existing_filename: str,
     if new_filename == existing_filename:
         raise ValueError('new_filename must not equal existing_filename')
     if skip_download:
-        with open(new_filename, 'r') as f:
+        with open(new_filename, 'r', encoding='utf-8', newline='') as f:
             csv_data = f.read()
     else:
         with connect(credentials, kwargs) as mint:
             if not skip_refresh:
                 refresh_mint_data(mint)
             csv_data, balances = download_mint_data(mint)
-        with open(new_filename, 'w') as f:
+        with open(new_filename, 'w', encoding='utf-8', newline='') as f:
             f.write(csv_data)
 
         balances_path = balances_output_prefix + time.strftime(

@@ -107,12 +107,13 @@ class Updater(CommandBase):
         success = False
         termination_message = 'SUCCESS'
         try:
-            with open(self.get_log_path(config), 'w') as f:
+            with open(
+                    self.get_log_path(config), 'w', encoding='utf-8',
+                    newline='') as f:
                 process = subprocess.Popen(
                     [
                         sys.executable, '-m', 'finance_dl.cli',
-                        '--config-module', self.args.config_module, '-c',
-                        config
+                        '--config-module', self.args.config_module, '-c', config
                     ],
                     stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT,
@@ -125,7 +126,11 @@ class Updater(CommandBase):
                 process.wait()
                 if process.returncode == 0:
                     success = True
-                    with open(self.get_last_update_path(config), 'w') as f:
+                    with open(
+                            self.get_last_update_path(config),
+                            'w',
+                            encoding='utf-8',
+                            newline='') as f:
                         pass
                 else:
                     termination_message = 'FAILED with return code %d' % (process.returncode)

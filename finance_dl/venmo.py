@@ -226,7 +226,7 @@ class Scraper(scrape_lib.Scraper):
     def get_existing_balances(self):
         if not os.path.exists(self.balances_path):
             return []
-        with open(self.balances_path, 'r', newline='') as f:
+        with open(self.balances_path, 'r', newline='', encoding='utf-8') as f:
             csv_reader = csv.DictReader(f)
             assert csv_reader.fieldnames == balance_field_names
             return list(csv_reader)
