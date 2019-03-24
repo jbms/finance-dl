@@ -145,7 +145,7 @@ def download_account_data_starting_from(account: ofxclient.account.Account,
 def get_ofx_date_range(data: bytes):
     soup = bs4.BeautifulSoup(io.BytesIO(data), 'html.parser')
     dtstart = find_child(soup, 'dtstart', parse_ofx_time)
-    dtend = find_child(soup, 'dtstart', parse_ofx_time)
+    dtend = find_child(soup, 'dtend', parse_ofx_time)
     if dtstart is None or dtend is None:
         logger.debug('Data received: %r', data)
         messages = soup.find_all('message')
