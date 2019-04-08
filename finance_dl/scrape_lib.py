@@ -1,6 +1,5 @@
 import contextlib
 import os
-import sys
 import time
 import tempfile
 import shutil
@@ -21,19 +20,6 @@ from selenium.webdriver.common.keys import Keys
 
 def all_conditions(*conditions):
     return lambda driver: all(condition(driver) for condition in conditions)
-
-
-def atomic_write_contents(contents, path):
-    if isinstance(contents, str):
-        contents = contents.encode('utf-8')
-    try:
-        os.makedirs(os.path.dirname(path))
-    except OSError:
-        pass
-    temp_path = path + '.tmp'
-    with open(temp_path, 'wb') as f:
-        f.write(contents)
-    os.rename(temp_path, path)
 
 
 def extract_table_data(table, header_names, single_header=False):

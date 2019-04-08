@@ -109,7 +109,8 @@ class Scraper(google_takeout.Scraper):
             with self.wait_for_page_load():
                 self.driver.get(url)
             content = self.driver.page_source
-            with atomic_write(html_path, mode='w') as f:
+            with atomic_write(
+                    html_path, mode='w', encoding='utf-8', newline='\n') as f:
                 # Write with Unicode Byte Order Mark to ensure content will be properly interpreted as UTF-8
                 f.write('\ufeff' + content)
             logger.info('Write details %d/%d: %s', i, len(need_to_fetch), html_path)

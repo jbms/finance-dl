@@ -2,6 +2,9 @@ import csv
 import collections
 import os
 
+from atomicwrites import atomic_write
+
+
 def merge_overlapping_csv_rows(csv_data_list, compare_fields):
     """Merge overlapping CSV files.
 
@@ -16,8 +19,10 @@ def merge_overlapping_csv_rows(csv_data_list, compare_fields):
 
     :return: Returns the merged list of rows.
     """
+
     def convert_row(row):
         return tuple(row[field] for field in compare_fields)
+
     merged_counter = collections.Counter()
     merged_rows = []
     for csv_data in csv_data_list:
@@ -30,17 +35,18 @@ def merge_overlapping_csv_rows(csv_data_list, compare_fields):
                 merged_counter[converted_row] += 1
     return merged_rows
 
+
 def write_csv(field_names, data, filename):
-    tmp_filename = filename + '.tmp'
-    with open(tmp_filename, 'w', newline='', encoding='utf-8') as f:
-        csv_writer = csv.DictWriter(f, field_names, lineterminator='\n',
-                                    quoting=csv.QUOTE_ALL)
+    with atomic_write(filename, mode='w', newline='', encoding='utf-8') as f:
+        csv_writer = csv.DictWriter(
+            f, field_names, lineterminator='\n', quoting=csv.QUOTE_ALL)
         csv_writer.writeheader()
         csv_writer.writerows(data)
-    os.rename(tmp_filename, filename)
+
 
 def merge_into_file(filename,
-                    field_names, data,
+                    field_names,
+                    data,
                     sort_by=None,
                     compare_fields=None):
     if compare_fields is None:
@@ -52,7 +58,7 @@ def merge_into_file(filename,
             assert reader.fieldnames == field_names, (reader.fieldnames, field_names)
             existing_rows = list(reader)
         data = merge_overlapping_csv_rows([existing_rows, data],
-                                              compare_fields=compare_fields)
+                                          compare_fields=compare_fields)
     if sort_by is not None:
         data.sort(key=sort_by)
     write_csv(field_names=field_names, data=data, filename=filename)

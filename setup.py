@@ -31,7 +31,7 @@ setup(
         'selenium-requests',
         'chromedriver-binary',
         'beancount>=2.1.2',
-        'atomicwrites',
+        'atomicwrites>=1.3.0',
         'jsonschema',
     ],
 )

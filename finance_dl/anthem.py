@@ -138,7 +138,9 @@ class Scraper(scrape_lib.Scraper):
             json_path = os.path.join(self.output_directory,
                                      claim['claimNumber'] + '.json')
             if not os.path.exists(json_path):
-                with atomic_write(json_path, mode='w') as f:
+                with atomic_write(
+                        json_path, mode='w', encoding='utf-8',
+                        newline='\n') as f:
                     f.write(json.dumps(claim, indent='  ').strip() + '\n')
             if not os.path.exists(pdf_path):
                 if not claim['eobLinkUrl'].startswith('https:/'): continue

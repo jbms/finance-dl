@@ -253,7 +253,9 @@ class Scraper(scrape_lib.Scraper):
             if order_id not in page_source:
                 raise ValueError('Failed to retrieve information for order %r'
                                  % (order_id, ))
-            with atomic_write(invoice_path, mode='w') as f:
+            with atomic_write(
+                    invoice_path, mode='w', encoding='utf-8',
+                    newline='\n') as f:
                 # Write with Unicode Byte Order Mark to ensure content will be properly interpreted as UTF-8
                 f.write('\ufeff' + page_source)
             logger.info('  Wrote %s', invoice_path)
