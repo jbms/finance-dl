@@ -31,9 +31,14 @@ The following keys may be specified as part of the configuration dict:
 Output format:
 ==============
 
-For each receipt, the JSON data as returned by the API is saved within the
-specified `output_directory` as `<receipt-id>.json`.  The JSON data contains at
-least the following fields:
+This module downloads receipts for all businesses that are accessible using the
+specified `credentials`. The receipts for each business is stored in the
+sub-directory of the specified `output_directory` with a name equal to the
+business name. If the sub-directory does not exist, it will be created.
+
+Within each business sub-directory, for each receipt, the JSON data as returned
+by the API is saved as `<receipt-id>.json`.  The JSON data contains at least the
+following fields:
 
  - `id`: The unique receipt identifier, matching the `<receipt-id>` portion of
    the filename.
