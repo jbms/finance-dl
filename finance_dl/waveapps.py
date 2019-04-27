@@ -148,13 +148,6 @@ class WaveScraper(object):
         receipts.extend(cur_list)
         return receipts
 
-    def get_all_receipts(self):
-        receipts = []  # type: List[Any]
-        for business in self._businesses:
-            business_id = business['id']
-            receipts.extend(self.get_receipts(business_id))
-        return receipts
-
     def save_receipts(self, receipts: List[Any], output_directory: str = None):
         if not output_directory:
             output_directory = self.output_directory
