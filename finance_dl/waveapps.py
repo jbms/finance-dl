@@ -25,6 +25,9 @@ The following keys may be specified as part of the configuration dict:
   local filesystem where the output will be written.  If the directory does not
   exist, it will be created.
 
+- `active_only`: Optional.  If specified, must be a `bool`. If `True`, do not
+  download deleted receipts.
+
 Output format:
 ==============
 
@@ -77,10 +80,11 @@ logger = logging.getLogger('waveapps')
 
 class WaveScraper(object):
     def __init__(self, credentials: dict, output_directory: str,
-                 headless=None):
+                 active_only: bool = False, headless=None):
         del headless
         self.credentials = credentials
         self.output_directory = output_directory
+        self.active_only = active_only
 
     def get_oauth2_token(self):
         if 'token' in self.credentials:
@@ -127,7 +131,8 @@ class WaveScraper(object):
         receipts = []  # type: List[Any]
         response = requests.get(
             'https://api.waveapps.com/businesses/' + business_id +
-            '/receipts/?active_only=false',
+            '/receipts/?active_only=' +
+            (self.active_only and 'true' or 'false'),
             headers=dict(self._authenticated_headers,
                          accept='application/json'),
         )
