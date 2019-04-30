@@ -25,6 +25,10 @@ The following keys may be specified as part of the configuration dict:
   local filesystem where the output will be written.  If the directory does not
   exist, it will be created.
 
+- `use_business_directory`: Optional.  If specified, must be a `bool`. If `True`,
+  create a subdirectory in `output_directory` to write the output for each
+  business ID.
+
 - `active_only`: Optional.  If specified, must be a `bool`. If `True`, do not
   download deleted receipts.
 
@@ -85,10 +89,12 @@ logger = logging.getLogger('waveapps')
 
 class WaveScraper(object):
     def __init__(self, credentials: dict, output_directory: str,
+                 use_business_directory: bool = False,
                  active_only: bool = False, headless=None):
         del headless
         self.credentials = credentials
         self.output_directory = output_directory
+        self.use_business_directory = use_business_directory
         self.active_only = active_only
 
     def get_oauth2_token(self):
@@ -180,15 +186,15 @@ class WaveScraper(object):
 
     def run(self):
         self.get_oauth2_token()
+        output_directory = self.output_directory
         businesses = self.get_businesses()
         for business in businesses:
             business_id = business['id']
             receipts = self.get_receipts(business_id)
-            if receipts:
-                business_name = business['company_name']
+            if receipts and self.use_business_directory:
                 output_directory = os.path.join(self.output_directory,
-                                                business_name)
-                self.save_receipts(receipts, output_directory)
+                                                business_id)
+            self.save_receipts(receipts, output_directory)
 
 
 def run(**kwargs):
