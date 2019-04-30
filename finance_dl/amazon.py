@@ -151,7 +151,7 @@ class Scraper(scrape_lib.Scraper):
             while True:
 
                 def invoice_finder():
-                    return self.driver.find_elements(By.XPATH, '//a[contains(@href, "summary/print.html")]')
+                    return self.driver.find_elements(By.XPATH, '//a[contains(@href, "orderID=")]')
 
                 if initial_iteration:
                     invoices = invoice_finder()
@@ -159,13 +159,17 @@ class Scraper(scrape_lib.Scraper):
                     invoices, = self.wait_and_return(invoice_finder)
                 initial_iteration = False
 
+                order_ids = set()
                 for invoice_link in invoices:
                     href = invoice_link.get_attribute('href')
-                    m = re.match('.*&orderID=((?:D)?[0-9\\-]+)(?:&.*)?$', href)
+                    m = re.match('.*[&?]orderID=((?:D)?[0-9\\-]+)(?:&.*)?$', href)
                     if m is None:
                         raise RuntimeError(
                             'Failed to parse order ID from href %r' % (href, ))
                     order_id = m[1]
+                    if order_id in order_ids:
+                        continue
+                    order_ids.add(order_id)
                     invoice_path = self.get_invoice_path(order_id)
                     if order_id in order_ids_seen:
                         logger.info('Skipping already-seen order id: %r',
@@ -175,7 +179,9 @@ class Scraper(scrape_lib.Scraper):
                         logger.info('Skipping already-downloaded invoice: %r',
                                     order_id)
                         continue
-                    invoice_hrefs.append((href, order_id))
+                    print_url = 'https://www.amazon.%s/gp/css/summary/print.html?ie=UTF8&orderID=%s' % (
+                        self.amazon_domain, order_id)
+                    invoice_hrefs.append((print_url, order_id))
                     order_ids_seen.add(order_id)
 
                 # Find next link
