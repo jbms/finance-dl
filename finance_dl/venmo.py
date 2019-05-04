@@ -213,7 +213,7 @@ class Scraper(scrape_lib.Scraper):
         csv_reader = csv.DictReader(
             io.StringIO(csv_result.decode(), newline=''))
         field_names = csv_reader.fieldnames
-        rows = list(csv_reader)
+        rows = [row for row in csv_reader if row['Datetime'].strip()]
 
         # Make sure rows are valid transactions with a date
         good_rows = []
