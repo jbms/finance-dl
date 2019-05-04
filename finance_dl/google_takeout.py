@@ -77,7 +77,7 @@ class Scraper(scrape_lib.Scraper):
         download_links = self._get_download_links()
         self._create_archive(categories=frozenset(categories))
 
-        for attempt_i in range(3):
+        for attempt_i in range(6):
             logger.info('Waiting for new download links (attempt %d)',
                         attempt_i + 1)
             # Wait 10 seconds for the archive to be created
