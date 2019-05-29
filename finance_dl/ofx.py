@@ -129,7 +129,7 @@ logger = logging.getLogger('ofx')
 def check_path_component(name: str):
     if name == '.' or name == '..':
         return False
-    if re.match(r'^[a-z0-9A-Z.\-]+$', name):
+    if re.match(r'^[a-z0-9A-Z.\-:]+$', name):
         return True
     return False
 
