@@ -34,4 +34,7 @@ setup(
         'atomicwrites>=1.3.0',
         'jsonschema',
     ],
+    tests_require=[
+        'pytest',
+    ]
 )
