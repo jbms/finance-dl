@@ -25,15 +25,24 @@ The following keys may be specified as part of the configuration dict:
   local filesystem where the output will be written.  If the directory does not
   exist, it will be created.
 
+- `use_business_directory`: Optional.  If specified, must be a `bool`. If `True`,
+  create a subdirectory in `output_directory` to write the output for each
+  business ID.
+
 - `active_only`: Optional.  If specified, must be a `bool`. If `True`, do not
   download deleted receipts.
 
 Output format:
 ==============
 
-For each receipt, the JSON data as returned by the API is saved within the
-specified `output_directory` as `<receipt-id>.json`.  The JSON data contains at
-least the following fields:
+This module downloads receipts for all businesses that are accessible using the
+specified `credentials`. The receipts for each business is stored in the
+sub-directory of the specified `output_directory` with a name equal to the
+business name. If the sub-directory does not exist, it will be created.
+
+Within each business sub-directory, for each receipt, the JSON data as returned
+by the API is saved as `<receipt-id>.json`.  The JSON data contains at least the
+following fields:
 
  - `id`: The unique receipt identifier, matching the `<receipt-id>` portion of
    the filename.
@@ -80,10 +89,12 @@ logger = logging.getLogger('waveapps')
 
 class WaveScraper(object):
     def __init__(self, credentials: dict, output_directory: str,
+                 use_business_directory: bool = False,
                  active_only: bool = False, headless=None):
         del headless
         self.credentials = credentials
         self.output_directory = output_directory
+        self.use_business_directory = use_business_directory
         self.active_only = active_only
 
     def get_oauth2_token(self):
@@ -124,7 +135,7 @@ class WaveScraper(object):
         response.raise_for_status()
         result = response.json()
         logger.info('Got %d businesses', len(result))
-        self._businesses = result
+        return result
 
     def get_receipts(self, business_id: str):
         logger.info('Getting receipts for business %s', business_id)
@@ -143,18 +154,13 @@ class WaveScraper(object):
         receipts.extend(cur_list)
         return receipts
 
-    def get_all_receipts(self):
-        receipts = []  # type: List[Any]
-        for business in self._businesses:
-            business_id = business['id']
-            receipts.extend(self.get_receipts(business_id))
-        return receipts
-
-    def save_receipts(self, receipts: List[Any]):
-        if not os.path.exists(self.output_directory):
-            os.makedirs(self.output_directory)
+    def save_receipts(self, receipts: List[Any], output_directory: str = None):
+        if not output_directory:
+            output_directory = self.output_directory
+        if not os.path.exists(output_directory):
+            os.makedirs(output_directory)
         for receipt in receipts:
-            output_prefix = os.path.join(self.output_directory,
+            output_prefix = os.path.join(output_directory,
                                          str(receipt['id']))
             json_path = output_prefix + '.json'
             for image_i, image in enumerate(receipt['images']):
@@ -180,9 +186,15 @@ class WaveScraper(object):
 
     def run(self):
         self.get_oauth2_token()
-        self.get_businesses()
-        receipts = self.get_all_receipts()
-        self.save_receipts(receipts)
+        output_directory = self.output_directory
+        businesses = self.get_businesses()
+        for business in businesses:
+            business_id = business['id']
+            receipts = self.get_receipts(business_id)
+            if receipts and self.use_business_directory:
+                output_directory = os.path.join(self.output_directory,
+                                                business_id)
+            self.save_receipts(receipts, output_directory)
 
 
 def run(**kwargs):
