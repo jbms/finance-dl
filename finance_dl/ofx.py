@@ -126,12 +126,15 @@ warnings.filterwarnings('ignore', message='split()', module='re')
 
 logger = logging.getLogger('ofx')
 
-def check_path_component(name: str):
-    if name == '.' or name == '..':
-        return False
-    if re.match(r'^[a-z0-9A-Z.\-]+$', name):
-        return True
-    return False
+def sanitize_account_name(account_name: str):
+    """Replaces any sequence of invalid characters in the account name with a dash.
+
+    Returns the sanitized account name.
+    """
+    if account_name == '.' or account_name == '..':
+        raise ValueError('Invalid account name: %s' % account_name)
+
+    return re.sub('[^a-z0-9A-Z.-]+', '-', account_name)
 
 
 def download_account_data_starting_from(account: ofxclient.account.Account,
@@ -300,8 +303,9 @@ def save_all_account_data(inst: ofxclient.institution.Institution,
     """
     accounts = inst.accounts()
     for a in accounts:
-        name = a.number
-        if not check_path_component(name):
+        try:
+            name = sanitize_account_name(a.number)
+        except ValueError:
             logger.warning('Account number is invalid path component: %r',
                            name)
             continue
