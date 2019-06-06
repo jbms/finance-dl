@@ -216,7 +216,8 @@ def save_single_account_data(
         returning at least 30 days of transactions per request.
     :param min_start_date: If no existing files are present in `output_dir`, a
         binary search is done starting from this date to determine the first
-        date for which the server returns a valid response.
+        date for which the server returns a valid response. If this search turns
+        up zero transactions, then nothing is saved for this account.
     """
 
     # Minimum number of days that the server is expected to give data for.
@@ -258,8 +259,13 @@ def save_single_account_data(
         date_ranges.sort()
 
     if len(date_ranges) == 0:
-        date_range, data = get_earliest_data(account,
-                                             start_date=min_start_date)
+        try:
+            date_range, data = get_earliest_data(account,
+                                                 start_date=min_start_date)
+        except RuntimeError as error:
+            logger.warning(error)
+            return
+
         save_data(date_range, data)
 
     def retrieve_more():
