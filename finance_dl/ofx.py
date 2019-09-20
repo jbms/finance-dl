@@ -126,6 +126,7 @@ warnings.filterwarnings('ignore', message='split()', module='re')
 
 logger = logging.getLogger('ofx')
 
+
 def sanitize_account_name(account_name: str):
     """Replaces any sequence of invalid characters in the account name with a dash.
 
@@ -191,8 +192,9 @@ def get_earliest_data(account, start_date):
 def save_single_account_data(
         account: ofxclient.account.Account, output_dir: str, overlap_days=2,
         min_days_retrieved=20,
-        min_start_date: datetime.date=dateutil.parser.parse(
-            '1990-01-01').date()):
+        min_start_date: datetime.date = dateutil.parser.parse(
+            '1990-01-01').date(),
+        always_save=True):
     """Attempts to download all transactions for the specified account.
 
     :param account: The connected account for which to download data.
@@ -218,13 +220,14 @@ def save_single_account_data(
         binary search is done starting from this date to determine the first
         date for which the server returns a valid response. If this search turns
         up zero transactions, then nothing is saved for this account.
+    :param always_save: When a new OFX file is downloaded that contains an 
+        end-date that matches a previously downloaded file's end-date, this flag
+        determines if the new file should be saved or not. By not saving it,
+        some transactions that occur later in the day could be missed (until
+        additional transactions arrive on later days and they get included in
+        the next download). By always saving the file, superfluous files could
+        be created.
     """
-
-    # Minimum number of days that the server is expected to give data for.
-    #
-    # We will assume that if we request data starting within this many
-    # days of today, that we will receive all available data.
-    min_days_retrieved = 20
 
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
@@ -240,7 +243,6 @@ def save_single_account_data(
                 match.group(1), date_format).date()
             end_date = datetime.datetime.strptime(match.group(2),
                                                   date_format).date()
-            # fetch_time = datetime.datetime.fromtimestamp(int(match.group(3)))
             if start_date > end_date:
                 logger.warning('Invalid filename: %r',
                                os.path.join(output_dir, name))
@@ -270,7 +272,6 @@ def save_single_account_data(
 
     def retrieve_more():
         # Find next gap
-        i = 0
         cur_range = None
         for i, cur_range in enumerate(date_ranges):
             if (i + 1 < len(date_ranges) and
@@ -285,6 +286,10 @@ def save_single_account_data(
         if date_range is None:
             logger.warning('Failed to retrieve newer data for account %s',
                            account.number)
+            return False
+        if (date_range[1].date() - cur_range[1]).days == 0:
+            if always_save:
+                save_data(date_range, data)
             return False
         save_data(date_range, data)
         return True
@@ -348,6 +353,7 @@ def run(ofx_params, output_directory, headless=False, **kwargs):
     del headless
     inst = connect(ofx_params)
     save_all_account_data(inst, output_directory, **kwargs)
+
 
 @contextlib.contextmanager
 def interactive(ofx_params, output_directory, headless=False):
