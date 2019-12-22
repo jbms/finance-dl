@@ -143,7 +143,8 @@ class Scraper(scrape_lib.Scraper):
             if (pay_date, document_number) not in downloaded_statements:
                 logger.info('%s:  Downloading', document_str)
                 link = row.find_element_by_tag_name('a')
-                link.click()
+                with self.wait_for_page_load():
+                  link.click()
                 download_link, = self.wait_and_return(
                     lambda: self.find_element_in_any_frame(
                         By.XPATH,
