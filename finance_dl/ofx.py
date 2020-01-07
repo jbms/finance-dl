@@ -127,7 +127,7 @@ warnings.filterwarnings('ignore', message='split()', module='re')
 logger = logging.getLogger('ofx')
 
 # Discover hack. Must have at least 5 seconds between requests.
-last_request_time = 0
+last_request_time = 0.0
 
 def sanitize_account_name(account_name: str):
     """Replaces any sequence of invalid characters in the account name with a dash.
@@ -152,7 +152,8 @@ def download_account_data_starting_from(account: ofxclient.account.Account,
             logger.debug('Discover hack: waiting between requests {:1f}'.format(tdiff))
             time.sleep(5)
         else:
-            logger.debug(f'ofx.py  last_ts: {last_request_time}  time now: {time.time()}  and diff: {tdiff}')
+            msg = 'ofx.py  last_ts: {:.1f}  time_now: {:.1f}  diff: {:.1f}'.format(last_request_time, time.time(), tdiff)
+            logger.debug(msg)
     last_request_time  = time.time()
 
     return account.download(days=num_days).read().encode('ascii')

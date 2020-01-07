@@ -175,18 +175,6 @@ class Scraper(scrape_lib.Scraper):
             except:
                 pass
         raise NoSuchElementException()
-        
-
-    def find_download_button(self):
-        for frame in self.for_each_frame():
-            try:
-                return self.driver.find_element_by_xpath('//i[@class="dropdown icon"]')
-            except:
-                pass
-        raise NoSuchElementException()
-        
-
-
 
     def download_ofx(self):
 
@@ -244,7 +232,7 @@ class Scraper(scrape_lib.Scraper):
             logging.info('Moving file from {} to {}'.format(src, dst))
             shutil.move(src, dst)
         else:
-            logging.info(f"Cannot find previous months file {src}.")
+            logging.info("Cannot find previous months file {:s}.".format(src))
 
         # Default saved filename is Rewards Checking-11_11_19.qfx
         logging.info('Fetching this months activity.')
@@ -269,7 +257,7 @@ class Scraper(scrape_lib.Scraper):
             logging.info('Moving file from {} to {}'.format(src, dst))
             shutil.move(src, dst)
         else:
-            logging.info(f"Cannot find this months file {src}.")
+            logging.info("Cannot find this months file {:s}.".format(src))
 
         logging.info('Success')
 
