@@ -205,7 +205,7 @@ def save_single_account_data(
         account: ofxclient.account.Account, output_dir: str, overlap_days=2,
         min_days_retrieved=20,
         min_start_date: datetime.date = dateutil.parser.parse(
-            '2006-01-01').date(),
+            '1990-01-01').date(),
         always_save=True, slowdown = False):
     """Attempts to download all transactions for the specified account.
 
