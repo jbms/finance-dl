@@ -214,6 +214,16 @@ class Scraper(scrape_lib.Scraper):
         field_names = csv_reader.fieldnames
         rows = list(csv_reader)
 
+        # Make sure rows are valid transactions with a date
+        good_rows = []
+        for r in rows:
+            if r['Datetime'] != '':
+                good_rows.append(r)
+            else:
+                logging.info('Invalid date in row: {}'.format(r))
+
+        rows = good_rows
+
         def get_sort_key(row):
             return parse_csv_date(row['Datetime']).timestamp()
 
