@@ -194,3 +194,51 @@ def CONFIG_google_payroll():
         # Recommended for greater reliability.
         headless=False,
     )
+
+
+def CONFIG_usbank():
+    return dict(
+        module='finance_dl.usbank',
+        earliest_history_date='2019-01-01',
+        account_name='XXX - XXXX',
+        credentials={
+            'username': 'XXXXXX',
+            'password': 'XXXXXX',
+        },
+        output_directory=os.path.join(data_dir, 'usbank/XXXXXXXXXXXXXXXXXX'),
+        profile_dir=profile_dir,
+        headless = False
+    )
+
+
+def CONFIG_discover():
+    ofx_params = {
+        'description': 'Discover Credit Card',
+        'id': '9625',
+        'org': 'Discover Card Account Center',
+        'url': 'https://ofx.discovercard.com:443',
+        'username': 'XXXXXX',
+        'password': 'XXXXXX',
+        'client_args': { 
+            'ofx_version': '102',
+            'app_version': '2700'},
+    }
+    return dict(
+        module='finance_dl.ofx',
+        ofx_params=ofx_params,
+        output_directory=os.path.join(data_dir, 'discover'),
+    )
+
+def CONFIG_radius():
+    return dict(
+        module='finance_dl.radius',
+        earliest_history_date='2019-01-01',
+        credentials={
+            'username': 'XXXXXX',
+            'password': 'XXXXXX',
+            'account_uid' : 'XXXXXX-XXXX-XXXX-XXXXXXXXXXXX',
+        },
+        output_directory=os.path.join(data_dir, 'radius'),
+        profile_dir=profile_dir,
+        headless = False
+    )    
