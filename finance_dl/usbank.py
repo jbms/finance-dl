@@ -132,6 +132,10 @@ class Scraper(scrape_lib.Scraper):
         (username, password), = self.wait_and_return(
             self.find_username_and_password_in_any_frame)
         logger.info('Entering username and password')
+        # In case of autofill
+        for i in range(50):
+            username.send_keys(Keys.BACK_SPACE)
+            password.send_keys(Keys.BACK_SPACE)
         username.send_keys(self.credentials['username'])
         password.send_keys(self.credentials['password'])
         with self.wait_for_page_load(timeout = 30):
