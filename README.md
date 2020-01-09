@@ -46,6 +46,8 @@ Supported data sources
   website/mobile app.
 - [finance_dl.ultipro_google](finance_dl/ultipro_google.py): downloads
   Google employee payroll statements in PDF format from Ultipro.
+- [finance_dl.usbank](finance_dl/usbank.py): downloads data from US Bank credit cards in OFX format.
+- [finance_dl.radiusbank](finance_dl/radiusbank.py): downloads data from Radius Bank in QFX format.
 
 Setup
 ==

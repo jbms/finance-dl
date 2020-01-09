@@ -126,6 +126,8 @@ warnings.filterwarnings('ignore', message='split()', module='re')
 
 logger = logging.getLogger('ofx')
 
+# Discover hack. Must have at least 5 seconds between requests.
+last_request_time = 0.0
 
 def sanitize_account_name(account_name: str):
     """Replaces any sequence of invalid characters in the account name with a dash.
@@ -139,10 +141,21 @@ def sanitize_account_name(account_name: str):
 
 
 def download_account_data_starting_from(account: ofxclient.account.Account,
-                                        date: datetime.date):
+                                        date: datetime.date, slowdown = False):
     logger.info('Trying to retrieve data for %s starting at %s.',
                 account.number, date)
     num_days = (datetime.date.today() - date).days
+    global last_request_time
+    if slowdown:
+        tdiff = time.time() - last_request_time
+        if tdiff < 5.0: # if less than 5 seconds
+            logger.debug('Discover hack: waiting between requests {:1f}'.format(tdiff))
+            time.sleep(5)
+        else:
+            msg = 'ofx.py  last_ts: {:.1f}  time_now: {:.1f}  diff: {:.1f}'.format(last_request_time, time.time(), tdiff)
+            logger.debug(msg)
+    last_request_time  = time.time()
+
     return account.download(days=num_days).read().encode('ascii')
 
 
@@ -158,7 +171,7 @@ def get_ofx_date_range(data: bytes):
     return dtstart, dtend
 
 
-def get_earliest_data(account, start_date):
+def get_earliest_data(account, start_date, slowdown = False):
     """Try to retrieve earliest batch of account data, starting at `start_date'.
 
     Uses binary search to find the earliest point after start_date that yields a valid response.
@@ -175,7 +188,7 @@ def get_earliest_data(account, start_date):
     while lower_bound + datetime.timedelta(days=1) < upper_bound:
         mid = lower_bound + datetime.timedelta(days=(upper_bound - lower_bound
                                                      ).days // 2)
-        data = download_account_data_starting_from(account, mid)
+        data = download_account_data_starting_from(account, mid, slowdown = slowdown)
         date_range = get_ofx_date_range(data)
         if date_range is not None:
             upper_bound = mid
@@ -194,7 +207,7 @@ def save_single_account_data(
         min_days_retrieved=20,
         min_start_date: datetime.date = dateutil.parser.parse(
             '1990-01-01').date(),
-        always_save=True):
+        always_save=True, slowdown = False):
     """Attempts to download all transactions for the specified account.
 
     :param account: The connected account for which to download data.
@@ -220,7 +233,7 @@ def save_single_account_data(
         binary search is done starting from this date to determine the first
         date for which the server returns a valid response. If this search turns
         up zero transactions, then nothing is saved for this account.
-    :param always_save: When a new OFX file is downloaded that contains an 
+    :param always_save: When a new OFX file is downloaded that contains an
         end-date that matches a previously downloaded file's end-date, this flag
         determines if the new file should be saved or not. By not saving it,
         some transactions that occur later in the day could be missed (until
@@ -263,7 +276,7 @@ def save_single_account_data(
     if len(date_ranges) == 0:
         try:
             date_range, data = get_earliest_data(account,
-                                                 start_date=min_start_date)
+                                                 start_date=min_start_date, slowdown = slowdown)
         except RuntimeError as error:
             logger.warning(error)
             return
@@ -281,7 +294,7 @@ def save_single_account_data(
                 continue
             break
         data = download_account_data_starting_from(
-            account, cur_range[1] - datetime.timedelta(days=overlap_days))
+            account, cur_range[1] - datetime.timedelta(days=overlap_days), slowdown = slowdown)
         date_range = get_ofx_date_range(data)
         if date_range is None:
             logger.warning('Failed to retrieve newer data for account %s',
@@ -313,6 +326,9 @@ def save_all_account_data(inst: ofxclient.institution.Institution,
     :param kwargs: Additional arguments to pass to save_single_account_data.
     """
     accounts = inst.accounts()
+    slowdown = 'Discover' in inst.org
+    if slowdown:
+        time.sleep(5)
     for a in accounts:
         try:
             name = sanitize_account_name(a.number)
@@ -321,7 +337,7 @@ def save_all_account_data(inst: ofxclient.institution.Institution,
                            name)
             continue
         save_single_account_data(
-            account=a, output_dir=os.path.join(output_dir, name), **kwargs)
+            account=a, output_dir=os.path.join(output_dir, name), slowdown = slowdown, **kwargs)
 
 
 def connect(params: dict) -> ofxclient.institution.Institution:
