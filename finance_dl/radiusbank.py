@@ -1,7 +1,7 @@
 """Retrieves transaction and balance information from RadiusBank.
 
 This uses the `selenium` Python package in conjunction with `chromedriver` to
-scrape the RadiusBank website. It downloads all transactions in the current year, overwritting the file containing those, if it exists. 
+scrape the RadiusBank website. It downloads all transactions in the current year, overwriting the file containing those, if it exists.
 If it's been less than 10 days since New Year's, it will download the previous year's transactions as well, in case some pending transactions got posted.
 
 Configuration:
