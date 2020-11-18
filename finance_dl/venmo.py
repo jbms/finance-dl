@@ -80,6 +80,7 @@ import dateutil.parser
 import datetime
 import logging
 import os
+import time
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.support.ui import Select
@@ -172,7 +173,7 @@ class Scraper(scrape_lib.Scraper):
     def download_csv(self):
         logger.info('Looking for CSV link')
         download_button, = self.wait_and_locate(
-            (By.XPATH, '//button[text() = "Download CSV"]'))
+            (By.XPATH, '//a[text() = "Download CSV"]'))
         self.click(download_button)
         logger.info('Waiting for CSV download')
         download_result, = self.wait_and_return(self.get_downloaded_file)
@@ -286,6 +287,9 @@ class Scraper(scrape_lib.Scraper):
                            start_date + datetime.timedelta(days=89))
             self.fetch_statement(start_date, end_date)
             start_date = end_date + datetime.timedelta(days=1)
+
+            logger.debug('Venmo hack: waiting 5 seconds between requests')
+            time.sleep(5)
 
     def run(self):
         self.login()
