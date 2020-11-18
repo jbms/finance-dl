@@ -37,7 +37,7 @@ def merge_overlapping_csv_rows(csv_data_list, compare_fields):
 
 
 def write_csv(field_names, data, filename):
-    with atomic_write(filename, mode='w', newline='', encoding='utf-8') as f:
+    with atomic_write(filename, mode='w', newline='', encoding='utf-8', overwrite=True) as f:
         csv_writer = csv.DictWriter(
             f, field_names, lineterminator='\n', quoting=csv.QUOTE_ALL)
         csv_writer.writeheader()
