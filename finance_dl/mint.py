@@ -75,7 +75,7 @@ to run the scraper.
 """
 
 import os
-from typing import Sequence, Optional, Dict
+from typing import Counter, Sequence, Tuple, Optional, Dict
 import dateutil.parser
 import io
 import csv
@@ -407,9 +407,9 @@ def verify_mint_update_consistency(csv_data: str, existing_filename: str,
             unchanged = True
         else:
             old_rows = get_rows(old_data)
-            old_counter = collections.Counter(old_rows)
+            old_counter: Counter[Tuple[str, ...]] = collections.Counter(old_rows)
             new_rows = get_rows(csv_data)
-            new_counter = collections.Counter(new_rows)
+            new_counter: Counter[Tuple[str, ...]] = collections.Counter(new_rows)
 
             for k in old_rows:
                 if old_counter[k] > new_counter[k]:
