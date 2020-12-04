@@ -2,6 +2,8 @@ import argparse
 import importlib
 import logging
 import json
+import sys
+import os
 
 
 def get_log_level(name):
@@ -35,6 +37,7 @@ def main():
         format='%(asctime)s %(filename)s:%(lineno)d [%(levelname)s] %(message)s')
 
     if args.config_module:
+        sys.path.append(os.getcwd())
         config_module = importlib.import_module(args.config_module)
     else:
         config_module = object()
