@@ -121,6 +121,7 @@ class Scraper(scrape_lib.Scraper):
             lambda: self.find_visible_elements(By.XPATH, '//input[@type="email"]')
         )
         username.send_keys(self.credentials['username'])
+        username.send_keys(Keys.ENTER)
 
         logger.info('Looking for password link')
         (password, ), = self.wait_and_return(
