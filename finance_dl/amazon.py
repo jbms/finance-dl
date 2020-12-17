@@ -30,6 +30,10 @@ The following keys may be specified as part of the configuration dict:
   browser profile.  If not specified, a fresh temporary profile will be used
   each time.
 
+- `order_groups`: Optional.  If specified, must be a list of strings specifying the Amazon
+  order page "order groups" that will be scanned for orders to download. Order groups
+  include years (e.g. '2020'), as well as 'last 30 days' and 'past 3 months'.
+
 Output format:
 ==============
 
@@ -51,6 +55,8 @@ Example:
             output_directory=os.path.join(data_dir, 'amazon'),
             # profile_dir is optional.
             profile_dir=os.path.join(profile_dir, 'amazon'),
+            # order_groups is optional.
+            order_groups=['past 3 months'],
         )
 
 Interactive shell:
@@ -79,7 +85,7 @@ class Domain:
 
 
 class Scraper(scrape_lib.Scraper):
-    def __init__(self, credentials, output_directory, amazon_domain=Domain.COM, regular=True, digital=None, **kwargs):
+    def __init__(self, credentials, output_directory, amazon_domain=Domain.COM, regular=True, digital=None, order_groups=None, **kwargs):
         super().__init__(**kwargs)
         default_digital = True if amazon_domain == Domain.COM else False
         self.credentials = credentials
@@ -88,6 +94,7 @@ class Scraper(scrape_lib.Scraper):
         self.amazon_domain = amazon_domain
         self.regular = regular
         self.digital = digital if digital is not None else default_digital
+        self.order_groups = order_groups
 
     def check_url(self, url):
         netloc_re = r'^([^\.@]+\.)*amazon.' + self.amazon_domain + '$'
@@ -209,15 +216,16 @@ class Scraper(scrape_lib.Scraper):
                     break
                 option_text = order_select.options[
                     order_select_index].text.strip()
-                if option_text != 'Archived Orders':
-                    logger.info('Retrieving order group: %r', option_text)
-                    with self.wait_for_page_load():
-                        order_select.select_by_index(order_select_index)
-                    get_invoice_urls()
-
                 order_select_index += 1
-                if order_select_index >= num_options:
-                    break
+                if option_text == 'Archived Orders':
+                    continue
+                if self.order_groups is not None and option_text not in self.order_groups:
+                    logger.info('Skipping order group: %r', option_text)
+                    continue
+                logger.info('Retrieving order group: %r', option_text)
+                with self.wait_for_page_load():
+                    order_select.select_by_index(order_select_index)
+                get_invoice_urls()
 
         if regular:
             orders_text = "Your Orders" if self.amazon_domain == Domain.CO_UK else "Orders"
