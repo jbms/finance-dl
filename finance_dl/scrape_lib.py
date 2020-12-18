@@ -127,7 +127,7 @@ def is_displayed(element):
 
 class Scraper(object):
     def __init__(self, download_dir=None, connect=None, chromedriver_bin='finance-dl-chromedriver-wrapper',
-                 headless=True, use_seleniumrequests=False, session_id=None, profile_dir=None):
+                 headless=True, use_seleniumrequests=False, session_id=None, profile_dir=None, firefox = False, user_agent = None):
 
         self.download_dir = download_dir
 
@@ -140,39 +140,62 @@ class Scraper(object):
         original_sigint_handler = signal.getsignal(signal.SIGINT)
         signal.signal(signal.SIGINT, signal.SIG_IGN)
 
-        self.chromedriver_bin = chromedriver_bin
-        chrome_options = webdriver.ChromeOptions()
-        service_args = []
-        chrome_options.add_experimental_option('excludeSwitches', [
-            'enable-automation',
-            'load-extension',
-            'load-component-extension',
-            'ignore-certificate-errors',
-            'test-type',
-        ])
-        if profile_dir is not None:
-            chrome_options.add_argument('user-data-dir=%s' % profile_dir)
-            if not os.path.exists(profile_dir):
-                os.makedirs(profile_dir)
-        prefs = {}
-        prefs['plugins.plugins_disabled'] = [
-            'Chrome PDF Viewer', 'Chromium PDF Viewer'
-        ]
-        prefs['plugins.always_open_pdf_externally'] = True
-        if download_dir is not None:
-            prefs['download.default_directory'] = download_dir
-        chrome_options.add_experimental_option('prefs', prefs)
-        if headless:
-            chrome_options.add_argument('headless')
-        if use_seleniumrequests:
-            driver_class = seleniumrequests.Chrome
+        if not firefox:
+            self.chromedriver_bin = chromedriver_bin
+            chrome_options = webdriver.ChromeOptions()
+            chrome_options.add_argument("--no-sandbox")
+            service_args = []
+            chrome_options.add_experimental_option('excludeSwitches', [
+                'enable-automation',
+                'load-extension',
+                'load-component-extension',
+                'ignore-certificate-errors',
+                'test-type',
+            ])
+            if user_agent:
+                # Chrome/78.0.3904.70 Safari/537.36
+                chrome_options.add_argument("user-agent={}".format(user_agent))
+
+            if profile_dir is not None:
+                chrome_options.add_argument('user-data-dir=%s' % profile_dir)
+                if not os.path.exists(profile_dir):
+                    os.makedirs(profile_dir)
+            prefs = {}
+            prefs['plugins.plugins_disabled'] = [
+                'Chrome PDF Viewer', 'Chromium PDF Viewer'
+            ]
+            prefs['plugins.always_open_pdf_externally'] = True
+            if download_dir is not None:
+                prefs['download.default_directory'] = download_dir
+            chrome_options.add_experimental_option('prefs', prefs)
+            if headless:
+                chrome_options.add_argument('headless')
+            if use_seleniumrequests:
+                driver_class = seleniumrequests.Chrome
+            else:
+                driver_class = webdriver.Chrome
+            self.driver = driver_class(
+                executable_path=self.chromedriver_bin,
+                chrome_options=chrome_options,
+                service_args=service_args,
+            )
         else:
-            driver_class = webdriver.Chrome
-        self.driver = driver_class(
-            executable_path=self.chromedriver_bin,
-            chrome_options=chrome_options,
-            service_args=service_args,
-        )
+            # Use firefox
+            print('Using Firefox as driver.')
+            profile = webdriver.FirefoxProfile(profile_directory = profile_dir)
+            if user_agent:
+                # Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4044.122 Safari/537.36 Edg/81.0.416.62
+                profile.set_preference("general.useragent.override", user_agent)
+            profile.set_preference('browser.download.folderList', 2) # custom location
+            profile.set_preference('browser.download.manager.showWhenStarting', False)
+            profile.set_preference('browser.download.dir', download_dir)
+            profile.set_preference('browser.helperApps.neverAsk.saveToDisk', "application/x-ofx,application/octet-stream")
+            profile.set_preference("browser.helperApps.alwaysAsk.force", False);
+            profile.set_preference("browser.download.manager.useWindow", False);
+            profile.set_preference("browser.download.manager.focusWhenStarting", False);
+            profile.set_preference("browser.download.manager.showAlertOnComplete", False);
+            profile.set_preference("browser.download.manager.closeWhenDone", True);
+            self.driver = webdriver.Firefox(profile)
         print(' --connect=%s --session-id=%s' %
               (self.driver.command_executor._url, self.driver.session_id))
         signal.signal(signal.SIGINT, original_sigint_handler)
