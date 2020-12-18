@@ -46,6 +46,7 @@ import json
 import logging
 import datetime
 import os
+import time
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import Select
 from selenium.webdriver.common.keys import Keys
@@ -133,12 +134,15 @@ class Scraper(scrape_lib.Scraper):
             return
 
         self.driver.get('https://www.paypal.com/us/signin')
+        time.sleep(0.2)
         logger.info('Finding username field')
         username, = self.wait_and_locate((By.XPATH, '//input[@type="email"]'),
                                          only_displayed=True)
         logger.info('Entering username')
+        username.clear()
         username.send_keys(self.credentials['username'])
         username.send_keys(Keys.ENTER)
+        time.sleep(0.2)
         logger.info('Finding password field')
         password, = self.wait_and_locate(
             (By.XPATH, '//input[@type="password"]'), only_displayed=True)
@@ -155,7 +159,8 @@ class Scraper(scrape_lib.Scraper):
             'GET', url, headers={
                 'x-csrf-token': self.get_csrf_token(),
                 'accept': 'application/json, text/javascript, */*; q=0.01',
-                'x-requested-with': 'XMLHttpRequest'
+                'x-requested-with': 'XMLHttpRequest',
+                'accept-encoding': 'gzip, deflate',
             })
 
     def get_csrf_token(self):
