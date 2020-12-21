@@ -22,9 +22,6 @@ The following keys may be specified as part of the configuration dict:
   browser profile.  If not specified, a fresh temporary profile will be used
   each time.  It is highly recommended to specify a `profile_dir` to avoid
   having to manually enter a multi-factor authentication code each time.
-  When using Firefox you may encounter the issue that it asks for confirmation
-  when downloading the file. You will need to launch Firefox from the profile
-  folder, and turn on autosaving for OFX files in settings.
 
 Output format:
 ==============
@@ -42,11 +39,7 @@ Example:
                 'password': 'XXXXXX',
             },
             output_directory=os.path.join(data_dir, 'discover'),
-            # firefox seems to work better on Discover's website
-            profile_dir=os.path.join(profile_dir, 'firefox'),
-            firefox=True,
-            # such a user agent string is necessary
-            user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4044.122 Safari/537.36 Edg/81.0.416.62"
+            profile_dir=profile_dir,
         )
 
 Interactive shell:
@@ -82,17 +75,8 @@ def check_url(url):
 
 
 class Scraper(scrape_lib.Scraper):
-    def __init__(self, credentials, output_directory,
-                 **kwargs):
-        """
-        @param earliest_history_date: Earliest UTC date for which to retrieve
-            transactions and balance information.
-
-        @param max_history_days: Number of days of history to retrieve, starting
-            from the previous UTC day, if `earliest_history_date` is not
-            specified.
-        """
-        super().__init__(**kwargs)
+    def __init__(self, credentials: dict, output_directory: str, **kwargs):
+        super().__init__(use_seleniumrequests=True, **kwargs)
         self.credentials = credentials
         self.output_directory = output_directory
         os.makedirs(self.output_directory, exist_ok=True)
@@ -102,7 +86,6 @@ class Scraper(scrape_lib.Scraper):
 
     def find_account_last4(self):
         return self.driver.find_element_by_xpath(XPATH_OF_LAST_FOUR_DIGITS).text
-
 
     def login(self):
         try:
@@ -135,28 +118,18 @@ class Scraper(scrape_lib.Scraper):
         start_date = datetime.datetime.strptime(str(this_year), '%Y')
         end_date = datetime.datetime.strptime(str(this_year + 1), '%Y')
         logging.info('Fetching history for all of {}'.format(this_year))
-
-        stdt = start_date.strftime('%Y%m%d')
-        enddt = end_date.strftime('%Y%m%d')
         fname = "Discover-{}.ofx".format(this_year)
         # Example URL:
         # https://card.discover.com/cardmembersvcs/ofxdl/ofxWebDownload?stmtKey=W&startDate=20191014&endDate=20191014&fileType=QFX&bid=9625&fileName=Discover-RecentActivity-20191014.qfx
         qfx_url = "https://card.discover.com/cardmembersvcs/ofxdl/ofxWebDownload?stmtKey=W&startDate={}&endDate={}&fileType=QFX&bid=9625&fileName={}"
-        qfx_url = qfx_url.format(stdt, enddt, fname)
+        qfx_url = qfx_url.format(start_date.strftime('%Y%m%d'), end_date.strftime('%Y%m%d'), fname) 
         logging.info("Downloading from URL: {}".format(qfx_url))
-        # this is necessary because otherwise it locks on the get() for a while
-        self.driver.set_page_load_timeout(5)
-        try:
-            self.driver.get(qfx_url)
-        except TimeoutException:
-            pass
-        (fname_, contents), = self.wait_and_return(self.get_downloaded_file)
-        logger.info("Found downloaded file: {}".format(fname))
+        response = self.driver.request('GET', qfx_url)
+        response.raise_for_status()
         account_folder = os.path.join(self.output_directory, self.account_name)
         os.makedirs(account_folder, exist_ok=True)
-        dst = os.path.join(account_folder, fname)
-        with open(dst, 'wb') as fout:
-            fout.write(contents)
+        with open(os.path.join(account_folder, fname), 'wb') as fout:
+            fout.write(response.content)
         logging.info('Success')
 
     def run(self):

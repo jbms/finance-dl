@@ -240,7 +240,6 @@ def CONFIG_discover_web():
         output_directory=os.path.join(data_dir, 'discover'),
         profile_dir=profile_dir,
         headless=True,
-        firefox=False
     )
     
 
