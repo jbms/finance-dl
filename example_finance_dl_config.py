@@ -219,7 +219,7 @@ def CONFIG_discover():
         'url': 'https://ofx.discovercard.com:443',
         'username': 'XXXXXX',
         'password': 'XXXXXX',
-        'client_args': { 
+        'client_args': {
             'ofx_version': '102',
             'app_version': '2700'},
     }
@@ -241,4 +241,16 @@ def CONFIG_radius():
         output_directory=os.path.join(data_dir, 'radius'),
         profile_dir=profile_dir,
         headless = False
-    )    
+    )
+
+def CONFIG_schwab():
+    return dict(
+        module='finance_dl.schwab',
+        credentials={
+            'username': 'XXXXXX',
+            'password': 'XXXXXX',
+        },
+        output_directory=os.path.join(data_dir, 'schwab'),
+        profile_dir=profile_dir,
+        headless=False,
+    )
