@@ -229,6 +229,20 @@ def CONFIG_discover():
         output_directory=os.path.join(data_dir, 'discover'),
     )
 
+
+def CONFIG_discover_web():
+    return dict(
+        module='finance_dl.discover',
+        credentials={
+        'username': 'XXXXXX',
+        'password': 'XXXXXX'
+        },
+        output_directory=os.path.join(data_dir, 'discover'),
+        profile_dir=profile_dir,
+        headless=True,
+    )
+
+
 def CONFIG_radius():
     return dict(
         module='finance_dl.radius',
@@ -242,6 +256,7 @@ def CONFIG_radius():
         profile_dir=profile_dir,
         headless = False
     )
+
 
 def CONFIG_schwab():
     return dict(
