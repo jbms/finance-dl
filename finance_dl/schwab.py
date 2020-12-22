@@ -31,7 +31,7 @@ import re
 import shutil
 import time
 from dataclasses import dataclass
-from typing import Any, Iterable, List, Mapping, Optional, Set, Tuple, TypedDict
+from typing import Any, List, Mapping, Optional, Set, Tuple
 
 from finance_dl import scrape_lib
 from selenium.webdriver.common.by import By
@@ -42,21 +42,15 @@ from selenium.webdriver.support import expected_conditions as EC
 logger = logging.getLogger(__name__)
 
 
-class CredentialsDict(TypedDict):
-    username: str
-    password: str
-
-
 @dataclass(frozen=True)
 class Account:
     label: str
-    number: Optional[str]
+    number: str
 
 
 class PageType(enum.Enum):
     NONE = 0
     HISTORY = 1
-    POSITIONS = 2
 
 
 class SchwabScraper(scrape_lib.Scraper):
@@ -70,7 +64,7 @@ class SchwabScraper(scrape_lib.Scraper):
 
     def __init__(
         self,
-        credentials: CredentialsDict,
+        credentials: Mapping[str, str],
         output_directory: str,
         min_start_date: datetime.date,
         **kwargs,
@@ -99,14 +93,14 @@ class SchwabScraper(scrape_lib.Scraper):
             if account is None:
                 break
             seen.add(account)
-            self.download_history(account)
+            self.download(account)
 
-    def download_history(self, account: Account) -> None:
+    def download(self, account: Account) -> None:
         assert self.current_page == PageType.HISTORY
 
-        logger.info(f"Getting transactions for {account}")
+        logger.info(f"Checking account {account}")
 
-        account_dir = self.get_account_dir(account)
+        account_dir, positions_dir = self.get_account_dirs(account)
         from_date = self.get_last_fetched_date(account_dir)
         if from_date is None:
             from_date = self.min_start_date
@@ -135,10 +129,24 @@ class SchwabScraper(scrape_lib.Scraper):
         )
         dest_name = f"{from_date.strftime('%Y-%m-%d')}_{to_date.strftime('%Y-%m-%d')}.csv"
         dest_path = os.path.join(account_dir, dest_name)
+        self.get_file(f"{account.label}_Transactions_", dest_path)
+
+        logger.info("Downloading positions.")
+
+        self.driver.get(
+            "https://client.schwab.com/api/PositionV2/PositionsDataV2/Export"
+            "?CalculateDayChangeIntraday=true"
+            "&firstColumn=symbolandDescriptionStacked&format=csv"
+        )
+        dest_name = datetime.date.today().strftime("%Y-%m-%d") + ".csv"
+        dest_path = os.path.join(positions_dir, dest_name)
+        self.get_file(f"{account.label}-Positions-", dest_path)
+
+    def get_file(self, expected_prefix: str, dest_path: str) -> None:
         for i in range(5):
             time.sleep(1)
             for entry in os.scandir(self.download_dir):
-                if entry.name.startswith(f"{account.label}_Transactions_"):
+                if entry.name.startswith(expected_prefix):
                     shutil.move(entry.path, dest_path)
                     logger.info(f"Downloaded {dest_path}")
                     return
@@ -250,11 +258,12 @@ class SchwabScraper(scrape_lib.Scraper):
         logger.info("Logged in.")
         return
 
-    def get_account_dir(self, account: Account) -> str:
-        path = os.path.join(self.output_directory, account.number)
-        if not os.path.exists(path):
-            os.makedirs(path)
-        return path
+    def get_account_dirs(self, account: Account) -> Tuple[str, str]:
+        acct_dir = os.path.join(self.output_directory, account.number)
+        pos_dir = os.path.join(acct_dir, "positions")
+        if not os.path.exists(pos_dir):
+            os.makedirs(pos_dir)
+        return acct_dir, pos_dir
 
     def get_last_fetched_date(self, account_dir: str) -> Optional[datetime.date]:
         last_date = None
