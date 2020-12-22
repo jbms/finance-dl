@@ -144,11 +144,8 @@ class SchwabScraper(scrape_lib.Scraper):
         self.get_file(f"{account.label}-Positions-", dest_path)
 
     def get_file(self, expected_prefix: str, dest_path: str) -> None:
-        def condition():
-            return self._get_file(expected_prefix, dest_path)
-
         self.wait_and_return(
-            condition,
+            lambda: self._get_file(expected_prefix, dest_path),
             message=f"Didn't find downloaded file starting with {expected_prefix}.",
         )
 
