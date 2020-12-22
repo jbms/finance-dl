@@ -140,17 +140,25 @@ class SchwabScraper(scrape_lib.Scraper):
         )
         dest_name = datetime.date.today().strftime("%Y-%m-%d") + ".csv"
         dest_path = os.path.join(positions_dir, dest_name)
+
         self.get_file(f"{account.label}-Positions-", dest_path)
 
     def get_file(self, expected_prefix: str, dest_path: str) -> None:
-        for i in range(5):
-            time.sleep(1)
-            for entry in os.scandir(self.download_dir):
-                if entry.name.startswith(expected_prefix):
-                    shutil.move(entry.path, dest_path)
-                    logger.info(f"Downloaded {dest_path}")
-                    return
-        assert False, "Didn't find downloaded transactions."
+        def condition():
+            return self._get_file(expected_prefix, dest_path)
+
+        self.wait_and_return(
+            condition,
+            message=f"Didn't find downloaded file starting with {expected_prefix}.",
+        )
+
+    def _get_file(self, expected_prefix: str, dest_path: str) -> bool:
+        for entry in os.scandir(self.download_dir):
+            if entry.name.startswith(expected_prefix):
+                shutil.move(entry.path, dest_path)
+                logger.info(f"Downloaded {dest_path}")
+                return True
+        return False
 
     def get_num_transaction_types(self) -> int:
         filter_link, = self.get_elements_wait("a.transaction-search-link")
