@@ -48,6 +48,7 @@ Supported data sources
   Google employee payroll statements in PDF format from Ultipro.
 - [finance_dl.usbank](finance_dl/usbank.py): downloads data from US Bank credit cards in OFX format.
 - [finance_dl.radiusbank](finance_dl/radiusbank.py): downloads data from Radius Bank in QFX format.
+- [finance_dl.schwab](finance_dl/schwab.py): downloads data from Schwab Brokerage accounts in CSV format.
 
 Setup
 ==
