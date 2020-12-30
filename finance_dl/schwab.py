@@ -17,6 +17,9 @@ created.
 which to attempt to retrieve data.  If no existing files are present for this account in
 the output directory, data is retrieved starting from this date.
 
+- `lot_details`: Optional. A boolean specifying whether or not to download full cost-basis
+lot details for all positions. Defaults to `False`.
+
 - `profile_dir`: Optional. If specified, must be a `str` that specifies the path to a
 persistent Chrome browser profile to use. This should be a path used solely for this
 single configuration; it should not refer to your normal browser profile. If not
@@ -32,6 +35,7 @@ import shutil
 import time
 from dataclasses import dataclass
 from typing import Any, List, Mapping, Optional, Set, Tuple
+from urllib.parse import urlencode
 
 from finance_dl import scrape_lib
 from selenium.webdriver.common.by import By
@@ -51,11 +55,15 @@ class Account:
 class PageType(enum.Enum):
     NONE = 0
     HISTORY = 1
+    POSITIONS = 2
 
 
 class SchwabScraper(scrape_lib.Scraper):
     HISTORY_URL = "https://client.schwab.com/Apps/accounts/transactionhistory/"
     POSITIONS_URL = "https://client.schwab.com/Areas/Accounts/Positions"
+    TXN_API_URL = "https://client.schwab.com/api/History/Brokerage/ExportTransaction"
+    POS_API_URL = "https://client.schwab.com/api/PositionV2/PositionsDataV2/Export"
+    LOT_API_URL = "https://client.schwab.com/api/Cost/CostData/Export?"
     TRANSACTIONS_FILENAME_RE = re.compile(
         r"(?P<start>\d{4}-\d{2}-\d{2})_(?P<end>\d{4}-\d{2}-\d{2}).csv"
     )
@@ -69,6 +77,7 @@ class SchwabScraper(scrape_lib.Scraper):
         min_start_date: datetime.date,
         **kwargs,
     ) -> None:
+        self.lot_details = kwargs.pop("lot_details", False)
         super().__init__(**kwargs)
         self.credentials = credentials
         self.output_directory = output_directory
@@ -93,14 +102,20 @@ class SchwabScraper(scrape_lib.Scraper):
             if account is None:
                 break
             seen.add(account)
-            self.download(account)
+            account_dir, positions_dir = self.get_account_dirs(account)
+            self.download(account, account_dir, positions_dir)
+            if self.lot_details:
+                self.driver.get(self.POSITIONS_URL)
+                self.current_page = PageType.POSITIONS
+                self.download_lot_details(positions_dir)
+                self.driver.get(self.HISTORY_URL)
+                self.current_page = PageType.HISTORY
 
-    def download(self, account: Account) -> None:
+    def download(self, account: Account, account_dir: str, positions_dir: str) -> None:
         assert self.current_page == PageType.HISTORY
 
         logger.info(f"Checking account {account}")
 
-        account_dir, positions_dir = self.get_account_dirs(account)
         from_date = self.get_last_fetched_date(account_dir)
         if from_date is None:
             from_date = self.min_start_date
@@ -121,7 +136,7 @@ class SchwabScraper(scrape_lib.Scraper):
         from_str = from_date.strftime("%m/%d/%Y")
         to_str = to_date.strftime("%m/%d/%Y")
         self.driver.get(
-            "https://client.schwab.com/api/History/Brokerage/ExportTransaction"
+            self.TXN_API_URL +
             f"?sortSeq=1&sortVal=0&tranFilter={transaction_filter}"
             f"&timeFrame=0&filterSymbol=&fromDate={from_str}&toDate={to_str}"
             "&exportError=&invalidFromDate=&invalidToDate=&symbolExportValue="
@@ -134,7 +149,7 @@ class SchwabScraper(scrape_lib.Scraper):
         logger.info("Downloading positions.")
 
         self.driver.get(
-            "https://client.schwab.com/api/PositionV2/PositionsDataV2/Export"
+            self.POS_API_URL +
             "?CalculateDayChangeIntraday=true"
             "&firstColumn=symbolandDescriptionStacked&format=csv"
         )
@@ -142,6 +157,55 @@ class SchwabScraper(scrape_lib.Scraper):
         dest_path = os.path.join(positions_dir, dest_name)
 
         self.get_file(f"{account.label}-Positions-", dest_path)
+
+    def download_lot_details(self, pos_dir: str) -> None:
+        assert self.current_page == PageType.POSITIONS
+
+        data_attr_to_param = {
+            "itemissueid": "itemIssueId",
+            "accountindex": "accountindex",
+            "quantity": "quantity",
+            "viewonly": "isviewonly",
+            "price": "price",
+            "totalquantity": "positionquantity",
+            "marketvalue": "marketvalue",
+            "printtitle": "title",
+            "iscostincomplete": "iscostincomplete",
+            "isprofitlossnotavailable": "istotalprofitlossavailable",
+            "profitlossdollar": "profitlossdollar",
+            "profitlosspercent": "profitlosspercent",
+            "quantitymismatch": "isQuantityMismatch",
+        }
+        fixed = {
+            "ispricenotavailable": "false",
+            "costbasismissing": "false",
+            "format": "csv",
+        }
+        lots_dir = os.path.join(pos_dir, "lots", datetime.date.today().strftime("%Y-%m-%d"))
+        if os.path.exists(lots_dir):
+            logger.info("Lot details for this date already downloaded.")
+            return
+        else:
+            os.makedirs(lots_dir)
+
+        logger.info("Getting lot details.")
+
+        lot_rows = self.get_elements_wait("table.securityTable tr.data-row")
+
+        for row in lot_rows:
+            symbol = row.get_attribute("data-pulsr-symbol")
+            if not symbol:
+                continue
+            logger.info(f"  ...{symbol}")
+            link = row.find_element(By.CSS_SELECTOR, "td.costBasisColumn a")
+            params = fixed.copy()
+            for attr, param in data_attr_to_param.items():
+                params[param] = link.get_attribute(f"data-{attr}")
+            qs = urlencode(params)
+            self.driver.get(f"{self.LOT_API_URL}{qs}")
+            dest_name = f"{symbol}.csv"
+            dest_path = os.path.join(lots_dir, dest_name)
+            self.get_file("Lot-Details.CSV", dest_path)
 
     def get_file(self, expected_prefix: str, dest_path: str) -> None:
         self.wait_and_return(
