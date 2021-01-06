@@ -136,8 +136,8 @@ class Scraper(scrape_lib.Scraper):
             new_path = self.get_output_path(output_dir, date)
             if os.path.exists(new_path):
                 logger.info('Skipping duplicate download: %s', date)
-                return False
-            tmp_path = new_path + '.tmp'
+                return True
+            tmp_path = new_path.replace('.pdf', '.tmp.pdf')
             with open(tmp_path, 'wb') as f:
                 download_data = download_result[1]
                 f.write(download_data)
