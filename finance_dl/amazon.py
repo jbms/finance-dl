@@ -224,7 +224,7 @@ class Scraper(scrape_lib.Scraper):
                     continue
                 logger.info('Retrieving order group: %r', option_text)
                 with self.wait_for_page_load():
-                    order_select.select_by_index(order_select_index)
+                    order_select.select_by_index(order_select_index-1)
                 get_invoice_urls()
 
         if regular:
