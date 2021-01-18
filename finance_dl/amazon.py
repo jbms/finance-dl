@@ -169,6 +169,8 @@ class Scraper(scrape_lib.Scraper):
 
                 order_ids = set()
                 for invoice_link in invoices:
+                    if invoice_link.text != "Invoice":
+                        continue
                     href = invoice_link.get_attribute('href')
                     m = re.match('.*[&?]orderID=((?:D)?[0-9\\-]+)(?:&.*)?$', href)
                     if m is None:
@@ -187,9 +189,7 @@ class Scraper(scrape_lib.Scraper):
                         logger.info('Skipping already-downloaded invoice: %r',
                                     order_id)
                         continue
-                    print_url = 'https://www.amazon.%s/gp/css/summary/print.html?ie=UTF8&orderID=%s' % (
-                        self.amazon_domain, order_id)
-                    invoice_hrefs.append((print_url, order_id))
+                    invoice_hrefs.append((href, order_id))
                     order_ids_seen.add(order_id)
 
                 # Find next link
@@ -214,8 +214,9 @@ class Scraper(scrape_lib.Scraper):
                 num_options = len(order_select.options)
                 if order_select_index >= num_options:
                     break
-                option_text = order_select.options[
-                    order_select_index].text.strip()
+                option = order_select.options[
+                    order_select_index]
+                option_text = option.text.strip()
                 order_select_index += 1
                 if option_text == 'Archived Orders':
                     continue
@@ -223,8 +224,9 @@ class Scraper(scrape_lib.Scraper):
                     logger.info('Skipping order group: %r', option_text)
                     continue
                 logger.info('Retrieving order group: %r', option_text)
-                with self.wait_for_page_load():
-                    order_select.select_by_index(order_select_index)
+                if not option.is_selected():
+                    with self.wait_for_page_load():
+                        order_select.select_by_index(order_select_index - 1)
                 get_invoice_urls()
 
         if regular:
