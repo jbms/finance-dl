@@ -17,6 +17,9 @@ The following keys may be specified as part of the configuration dict:
   local filesystem where the bills will be saved.  If the directory does not
   exist, it will be created.
 
+- `stop_early`: Optional.  Must be a `bool` that specifies whether to stop after
+  the most recent already-present bill is downloaded.  Defaults to `True`.
+
 - `profile_dir`: Optional.  If specified, must be a `str` that specifies the
   path to a persistent Chrome browser profile to use.  This should be a path
   used solely for this single configuration; it should not refer to your normal
@@ -59,6 +62,7 @@ import logging
 import os
 import urllib.parse
 
+from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import Select
 from selenium.webdriver.common.keys import Keys
@@ -86,10 +90,11 @@ def find_first_matching_date(lines, date_format):
 
 
 class Scraper(scrape_lib.Scraper):
-    def __init__(self, credentials, output_directory, **kwargs):
+    def __init__(self, credentials, output_directory, stop_early=True, **kwargs):
         super().__init__(**kwargs)
         self.credentials = credentials
         self.output_directory = output_directory
+        self.stop_early = stop_early
         self.logged_in = False
 
     def check_after_wait(self):
@@ -140,23 +145,30 @@ class Scraper(scrape_lib.Scraper):
             logger.info("Wrote %s", new_path)
             return True
 
+    def do_download_from_link(self, link, output_dir):
+        scrape_lib.retry(lambda: self.click(link), retry_delay=2)
+        logger.info('Waiting for download')
+        download_result, = self.wait_and_return(self.get_downloaded_file)
+        return self.process_download(download_result, output_dir)
+
     def get_bills(self, output_dir):
+        logger.info('Sending escape')
+        actions = ActionChains(self.driver)
+        actions.send_keys(Keys.ESCAPE)
+        actions.perform()
         logger.info('Looking for download link')
         (bills_link, ), = self.wait_and_return(
             lambda: self.find_visible_elements_by_descendant_partial_text('BILL & PAYMENT HISTORY', 'h2'))
         scrape_lib.retry(lambda: self.click(bills_link), retry_delay=2)
+        (more_link, ), = self.wait_and_return(
+            lambda: self.find_visible_elements_by_descendant_partial_text('View up to 24 months of activity', 'a'))
+        scrape_lib.retry(lambda: self.click(more_link), retry_delay=2)
         links, = self.wait_and_return(
             lambda: self.find_visible_elements(By.PARTIAL_LINK_TEXT, "View Bill PDF")
         )
 
-        def do_download(link):
-            scrape_lib.retry(lambda: self.click(link), retry_delay=2)
-            logger.info('Waiting for download')
-            download_result, = self.wait_and_return(self.get_downloaded_file)
-            return self.process_download(download_result, output_dir)
-
         for link in links:
-            if not do_download(link):
+            if not self.do_download_from_link(link, output_dir) and self.stop_early:
                 break
 
     def run(self):
