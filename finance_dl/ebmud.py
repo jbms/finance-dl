@@ -62,6 +62,7 @@ import dateutil.parser
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import Select
 from selenium.webdriver.common.keys import Keys
+from atomicwrites import atomic_write
 
 from . import scrape_lib
 
@@ -106,13 +107,13 @@ class Scraper(scrape_lib.Scraper):
     def get_statements(self):
         logger.info('Looking for statement link')
         statements_link, = self.wait_and_locate((By.LINK_TEXT,
-                                                 'View Statements'))
+                                                 'Statements'))
         statements_link.click()
 
         (statements_table, ), = self.wait_and_return(
             lambda: self.find_visible_elements_by_descendant_partial_text('Statement Date', 'table')
         )
-        rows = statements_table.find_elements_by_xpath('tbody/tr/td')
+        rows = statements_table.find_elements_by_xpath('tbody/tr')
         for row in rows:
             row_text_parts = row.text.split()
             assert len(row_text_parts) == 4
@@ -125,12 +126,10 @@ class Scraper(scrape_lib.Scraper):
                 logger.info('Skipping existing statement: %s', statement_path)
                 continue
             logger.info('Downloading %s', statement_path)
-            self.click(row)
+            self.click(row.find_element_by_tag_name('a'))
             download_result, = self.wait_and_return(self.get_downloaded_file)
-            tmp_path = statement_path + '.tmp'
-            with open(tmp_path, 'wb') as f:
+            with atomic_write(statement_path, mode='wb') as f:
                 f.write(download_result[1])
-            os.rename(tmp_path, statement_path)
             logger.info('Wrote %s', statement_path)
 
     def run(self):
