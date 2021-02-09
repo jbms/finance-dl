@@ -6,7 +6,7 @@ import shutil
 import seleniumrequests
 
 from selenium import webdriver
-from selenium.webdriver.firefox.firefox_binary import FirefoxBinary
+from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 from selenium.webdriver.support.ui import WebDriverWait, Select
 from selenium.webdriver.support import expected_conditions
 import signal
@@ -127,7 +127,8 @@ def is_displayed(element):
 
 class Scraper(object):
     def __init__(self, download_dir=None, connect=None, chromedriver_bin='finance-dl-chromedriver-wrapper',
-                 headless=True, use_seleniumrequests=False, session_id=None, profile_dir=None):
+                 headless=True, use_seleniumrequests=False, session_id=None, profile_dir=None,
+                 capture_network_requests=False):
 
         self.download_dir = download_dir
 
@@ -142,7 +143,11 @@ class Scraper(object):
 
         self.chromedriver_bin = chromedriver_bin
         chrome_options = webdriver.ChromeOptions()
-        service_args = []
+        service_args = ['--verbose', '--log-path=/tmp/chromedriver.log', '--no-sandbox']
+        caps = DesiredCapabilities.CHROME
+        if capture_network_requests:
+            caps['loggingPrefs'] = {'performance': 'ALL'}
+            caps['goog:loggingPrefs'] = {'performance': 'ALL'}
         chrome_options.add_experimental_option('excludeSwitches', [
             'enable-automation',
             'load-extension',
@@ -171,6 +176,7 @@ class Scraper(object):
         self.driver = driver_class(
             executable_path=self.chromedriver_bin,
             chrome_options=chrome_options,
+            desired_capabilities=caps,
             service_args=service_args,
         )
         print(' --connect=%s --session-id=%s' %
