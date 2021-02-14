@@ -147,7 +147,7 @@ class Scraper(scrape_lib.Scraper):
                 download_link, = self.wait_and_return(
                     lambda: self.find_element_in_any_frame(
                         By.XPATH,
-                        '//input[@type="image" and contains(@title, "download")]'
+                        '//input[@type="image" and contains(@title, "Download")]'
                     ))
                 download_link.click()
                 logger.info('%s: Waiting to get download', document_str)
