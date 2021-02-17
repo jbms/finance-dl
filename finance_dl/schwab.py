@@ -232,7 +232,8 @@ class SchwabScraper(scrape_lib.Scraper):
     def _get_file(self, expected_prefix: str, dest_path: str) -> bool:
         for entry in os.scandir(self.download_dir):
             if entry.name.startswith(expected_prefix):
-                shutil.move(entry.path, dest_path)
+                shutil.copy(entry.path, dest_path)
+                os.remove(entry.path)
                 logger.info(f"Downloaded {dest_path}")
                 return True
         return False
