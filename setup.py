@@ -33,9 +33,6 @@ def _setup_temp_egg_info(cmd):
 
 class SdistCommand(setuptools.command.sdist.sdist):
     def run(self):
-        # Build the client bundle if it does not already exist.  If it has
-        # already been built but is stale, the user is responsible for
-        # rebuilding it.
         _setup_temp_egg_info(self)
         super().run()
 
