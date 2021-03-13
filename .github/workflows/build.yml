@@ -57,6 +57,7 @@ jobs:
         user: __token__
         password: ${{ secrets.pypi_test_token }}
         repository_url: https://test.pypi.org/legacy/
+      if: ${{ ! startsWith(github.ref, 'refs/tags/v') }}
     - name: Publish to PyPI (main server)
       uses: pypa/gh-action-pypi-publish@54b39fb9371c0b3a6f9f14bb8a67394defc7a806 # 2020-09-25
       with:
