@@ -143,7 +143,8 @@ class Scraper(object):
 
         self.chromedriver_bin = chromedriver_bin
         chrome_options = webdriver.ChromeOptions()
-        service_args = ['--verbose', '--log-path=/tmp/chromedriver.log', '--no-sandbox']
+        log_path = os.getenv("TMPLOG", "/tmp/chromedriver.log")
+        service_args = ['--verbose', f'--log-path={log_path}', '--no-sandbox']
         caps = DesiredCapabilities.CHROME
         if capture_network_requests:
             caps['loggingPrefs'] = {'performance': 'ALL'}

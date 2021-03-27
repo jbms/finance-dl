@@ -62,6 +62,7 @@ class SchwabScraper(scrape_lib.Scraper):
     HISTORY_URL = "https://client.schwab.com/Apps/accounts/transactionhistory/"
     POSITIONS_URL = "https://client.schwab.com/Areas/Accounts/Positions"
     TXN_API_URL = "https://client.schwab.com/api/History/Brokerage/ExportTransaction"
+    BANK_TXN_API_URL = "https://client.schwab.com/api/History/Banking/ExportBankTransaction"
     POS_API_URL = "https://client.schwab.com/api/PositionV2/PositionsDataV2/Export"
     LOT_API_URL = "https://client.schwab.com/api/Cost/CostData/Export?"
     TRANSACTIONS_FILENAME_RE = re.compile(
@@ -127,36 +128,51 @@ class SchwabScraper(scrape_lib.Scraper):
         if to_date <= from_date:
             logger.info("No dates to download.")
             return
+        is_checking = len(self.find_visible_elements(By.XPATH, '//a[text() = "Realized Gain / Loss"]')) == 0
+        if is_checking:
+            logger.info("Downloading banking transactions.")
+            from_str = from_date.strftime("%m/%d/%Y")
+            to_str = to_date.strftime("%m/%d/%Y")
+            account_str = account.number.replace("-", "")
+            self.driver.get(
+                self.BANK_TXN_API_URL +
+                f"?AccountId={account_str}"
+                f"&FromDate={from_str}&ToDate={to_str}&SelectedFilters=AllTransactions&SortBy=Date"
+                f"&SortOrder=D&RecordsPerPage=400&GetDirection=F&dateRange=All"
+            )
+            dest_name = f"{from_date.strftime('%Y-%m-%d')}_{to_date.strftime('%Y-%m-%d')}.csv"
+            dest_path = os.path.join(account_dir, dest_name)
+            self.get_file(f"{account.label}_", dest_path)
+        else:
+            logger.info("Downloading brokerage transactions.")
 
-        logger.info("Downloading transactions.")
+            num_transaction_types = self.get_num_transaction_types()
+            transaction_filter = "|".join(map(str, range(num_transaction_types)))
 
-        num_transaction_types = self.get_num_transaction_types()
-        transaction_filter = "|".join(map(str, range(num_transaction_types)))
+            from_str = from_date.strftime("%m/%d/%Y")
+            to_str = to_date.strftime("%m/%d/%Y")
+            self.driver.get(
+                self.TXN_API_URL +
+                f"?sortSeq=1&sortVal=0&tranFilter={transaction_filter}"
+                f"&timeFrame=0&filterSymbol=&fromDate={from_str}&toDate={to_str}"
+                "&exportError=&invalidFromDate=&invalidToDate=&symbolExportValue="
+                "&includeOptions=N&displayTotal=true"
+            )
+            dest_name = f"{from_date.strftime('%Y-%m-%d')}_{to_date.strftime('%Y-%m-%d')}.csv"
+            dest_path = os.path.join(account_dir, dest_name)
+            self.get_file(f"{account.label}_Transactions_", dest_path)
 
-        from_str = from_date.strftime("%m/%d/%Y")
-        to_str = to_date.strftime("%m/%d/%Y")
-        self.driver.get(
-            self.TXN_API_URL +
-            f"?sortSeq=1&sortVal=0&tranFilter={transaction_filter}"
-            f"&timeFrame=0&filterSymbol=&fromDate={from_str}&toDate={to_str}"
-            "&exportError=&invalidFromDate=&invalidToDate=&symbolExportValue="
-            "&includeOptions=N&displayTotal=true"
-        )
-        dest_name = f"{from_date.strftime('%Y-%m-%d')}_{to_date.strftime('%Y-%m-%d')}.csv"
-        dest_path = os.path.join(account_dir, dest_name)
-        self.get_file(f"{account.label}_Transactions_", dest_path)
+            logger.info("Downloading positions.")
 
-        logger.info("Downloading positions.")
+            self.driver.get(
+                self.POS_API_URL +
+                "?CalculateDayChangeIntraday=true"
+                "&firstColumn=symbolandDescriptionStacked&format=csv"
+            )
+            dest_name = datetime.date.today().strftime("%Y-%m-%d") + ".csv"
+            dest_path = os.path.join(positions_dir, dest_name)
 
-        self.driver.get(
-            self.POS_API_URL +
-            "?CalculateDayChangeIntraday=true"
-            "&firstColumn=symbolandDescriptionStacked&format=csv"
-        )
-        dest_name = datetime.date.today().strftime("%Y-%m-%d") + ".csv"
-        dest_path = os.path.join(positions_dir, dest_name)
-
-        self.get_file(f"{account.label}-Positions-", dest_path)
+            self.get_file(f"{account.label}-Positions-", dest_path)
 
     def download_lot_details(self, pos_dir: str) -> None:
         assert self.current_page == PageType.POSITIONS
