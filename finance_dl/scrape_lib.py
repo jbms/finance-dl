@@ -156,6 +156,7 @@ class Scraper(object):
             'ignore-certificate-errors',
             'test-type',
         ])
+        chrome_options.add_argument('--no-sandbox')
         if profile_dir is not None:
             chrome_options.add_argument('user-data-dir=%s' % profile_dir)
             if not os.path.exists(profile_dir):
