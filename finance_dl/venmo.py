@@ -210,15 +210,19 @@ class Scraper(scrape_lib.Scraper):
         return result
 
     def write_csv(self, csv_result):
-        csv_reader = csv.DictReader(
-            io.StringIO(csv_result.decode(), newline=''))
+        # Skip first two lines because they are not useful
+        str_io = io.StringIO(csv_result.decode(), newline='')
+        io_iter = iter(str_io)
+        next(io_iter)
+        next(io_iter)
+        csv_reader = csv.DictReader(str_io)
         field_names = csv_reader.fieldnames
         rows = [row for row in csv_reader if row['Datetime'].strip()]
 
         # Make sure rows are valid transactions with a date
         good_rows = []
         for r in rows:
-            if r['Datetime'] != '':
+            if 'Datetime' not in r or r['Datetime'] != '':
                 good_rows.append(r)
             else:
                 logging.info('Invalid date in row: {}'.format(r))
@@ -230,6 +234,21 @@ class Scraper(scrape_lib.Scraper):
 
         transactions_file = os.path.join(self.output_directory,
                                          'transactions.csv')
+        # One time fix in case Username column present in existing file
+        if os.path.exists(transactions_file):
+            with open(transactions_file, 'r', newline='', encoding='utf-8') as f:
+                csv_reader = csv.DictReader(f)
+                old_field_names = csv_reader.fieldnames
+                if old_field_names[0] == 'Username':
+                    logging.info("Removing 'Username' column from old transactions file.")
+                    data = list(csv_reader)
+                    for r in data:
+                        r.pop('Username')
+                        r[''] = ''
+                    old_field_names[0] = ''
+                    os.rename(transactions_file, transactions_file + '.bak')
+                    logging.info(f"Backed up existing transactions file to {transactions_file}.bak")
+                    csv_merge.write_csv(old_field_names, data, transactions_file)
         csv_merge.merge_into_file(filename=transactions_file,
                                   field_names=field_names, data=rows,
                                   sort_by=get_sort_key)
