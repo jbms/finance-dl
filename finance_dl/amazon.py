@@ -169,7 +169,7 @@ class Scraper(scrape_lib.Scraper):
 
                 order_ids = set()
                 for invoice_link in invoices:
-                    if invoice_link.text != "Invoice":
+                    if "nvoice" not in invoice_link.text:
                         continue
                     href = invoice_link.get_attribute('href')
                     m = re.match('.*[&?]orderID=((?:D)?[0-9\\-]+)(?:&.*)?$', href)
