@@ -39,12 +39,17 @@ from urllib.parse import urlencode
 
 from finance_dl import scrape_lib
 from selenium.webdriver.common.by import By
+from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import Select, WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
 logger = logging.getLogger(__name__)
 
+def sanitize(x):
+    x = x.replace(' ', '_')
+    x = re.sub('[^a-zA-Z0-9-_.]', '', x)
+    return x
 
 @dataclass(frozen=True)
 class Account:
@@ -79,7 +84,7 @@ class SchwabScraper(scrape_lib.Scraper):
         **kwargs,
     ) -> None:
         self.lot_details = kwargs.pop("lot_details", False)
-        super().__init__(**kwargs)
+        super().__init__(use_seleniumrequests=True, **kwargs)
         self.credentials = credentials
         self.output_directory = output_directory
         self.min_start_date = min_start_date
@@ -104,15 +109,15 @@ class SchwabScraper(scrape_lib.Scraper):
                 break
             seen.add(account)
             account_dir, positions_dir = self.get_account_dirs(account)
-            self.download(account, account_dir, positions_dir)
-            if self.lot_details:
+            is_checking = self.download(account, account_dir, positions_dir)
+            if self.lot_details and not is_checking:
                 self.driver.get(self.POSITIONS_URL)
                 self.current_page = PageType.POSITIONS
                 self.download_lot_details(positions_dir)
                 self.driver.get(self.HISTORY_URL)
                 self.current_page = PageType.HISTORY
 
-    def download(self, account: Account, account_dir: str, positions_dir: str) -> None:
+    def download(self, account: Account, account_dir: str, positions_dir: str) -> bool:
         assert self.current_page == PageType.HISTORY
 
         logger.info(f"Checking account {account}")
@@ -125,24 +130,22 @@ class SchwabScraper(scrape_lib.Scraper):
         # Only download up to yesterday, so we can avoid overlap and not risk missing
         # any transactions.
         to_date = datetime.date.today() - self.ONE_DAY
+        is_checking = len(self.find_visible_elements(By.XPATH, '//a[text() = "Realized Gain / Loss"]')) == 0
         if to_date <= from_date:
             logger.info("No dates to download.")
-            return
-        is_checking = len(self.find_visible_elements(By.XPATH, '//a[text() = "Realized Gain / Loss"]')) == 0
+            return is_checking
         if is_checking:
             logger.info("Downloading banking transactions.")
             from_str = from_date.strftime("%m/%d/%Y")
             to_str = to_date.strftime("%m/%d/%Y")
             account_str = account.number.replace("-", "")
-            self.driver.get(
-                self.BANK_TXN_API_URL +
-                f"?AccountId={account_str}"
-                f"&FromDate={from_str}&ToDate={to_str}&SelectedFilters=AllTransactions&SortBy=Date"
+            url = self.BANK_TXN_API_URL +\
+                f"?AccountId={account_str}" +\
+                f"&FromDate={from_str}&ToDate={to_str}&SelectedFilters=AllTransactions&SortBy=Date" +\
                 f"&SortOrder=D&RecordsPerPage=400&GetDirection=F&dateRange=All"
-            )
             dest_name = f"{from_date.strftime('%Y-%m-%d')}_{to_date.strftime('%Y-%m-%d')}.csv"
             dest_path = os.path.join(account_dir, dest_name)
-            self.get_file(f"{account.label}_", dest_path)
+            self.save_url(url, dest_path)
         else:
             logger.info("Downloading brokerage transactions.")
 
@@ -151,28 +154,24 @@ class SchwabScraper(scrape_lib.Scraper):
 
             from_str = from_date.strftime("%m/%d/%Y")
             to_str = to_date.strftime("%m/%d/%Y")
-            self.driver.get(
-                self.TXN_API_URL +
-                f"?sortSeq=1&sortVal=0&tranFilter={transaction_filter}"
-                f"&timeFrame=0&filterSymbol=&fromDate={from_str}&toDate={to_str}"
-                "&exportError=&invalidFromDate=&invalidToDate=&symbolExportValue="
+            url = self.TXN_API_URL +\
+                f"?sortSeq=1&sortVal=0&tranFilter={transaction_filter}" +\
+                f"&timeFrame=0&filterSymbol=&fromDate={from_str}&toDate={to_str}" +\
+                "&exportError=&invalidFromDate=&invalidToDate=&symbolExportValue=" +\
                 "&includeOptions=N&displayTotal=true"
-            )
             dest_name = f"{from_date.strftime('%Y-%m-%d')}_{to_date.strftime('%Y-%m-%d')}.csv"
             dest_path = os.path.join(account_dir, dest_name)
-            self.get_file(f"{account.label}_Transactions_", dest_path)
+            self.save_url(url, dest_path)
 
             logger.info("Downloading positions.")
 
-            self.driver.get(
-                self.POS_API_URL +
-                "?CalculateDayChangeIntraday=true"
+            url = self.POS_API_URL +\
+                "?CalculateDayChangeIntraday=true" +\
                 "&firstColumn=symbolandDescriptionStacked&format=csv"
-            )
             dest_name = datetime.date.today().strftime("%Y-%m-%d") + ".csv"
             dest_path = os.path.join(positions_dir, dest_name)
-
-            self.get_file(f"{account.label}-Positions-", dest_path)
+            self.save_url(url, dest_path)
+        return is_checking
 
     def download_lot_details(self, pos_dir: str) -> None:
         assert self.current_page == PageType.POSITIONS
@@ -206,36 +205,35 @@ class SchwabScraper(scrape_lib.Scraper):
 
         logger.info("Getting lot details.")
 
-        lot_rows = self.get_elements_wait("table.securityTable tr.data-row")
+        lot_rows = self.get_elements_wait("table.securityTable tr")
 
         for row in lot_rows:
             symbol = row.get_attribute("data-pulsr-symbol")
             if not symbol:
                 continue
             logger.info(f"  ...{symbol}")
-            link = row.find_element(By.CSS_SELECTOR, "td.costBasisColumn a")
+            try:
+                link = row.find_element(By.CSS_SELECTOR, "td.costBasisColumn a")
+            except NoSuchElementException:
+                # possibly options on this symbol
+                logger.warning(f"Nothing to do on {symbol}")
+                continue
             params = fixed.copy()
             for attr, param in data_attr_to_param.items():
                 params[param] = link.get_attribute(f"data-{attr}")
             qs = urlencode(params)
-            self.driver.get(f"{self.LOT_API_URL}{qs}")
+            # Necessary because options have spaces, and SPAC warrants have a slash
+            symbol = sanitize(symbol)
             dest_name = f"{symbol}.csv"
             dest_path = os.path.join(lots_dir, dest_name)
-            self.get_file("Lot-Details.CSV", dest_path)
+            self.save_url(f"{self.LOT_API_URL}{qs}", dest_path)
 
-    def get_file(self, expected_prefix: str, dest_path: str) -> None:
-        self.wait_and_return(
-            lambda: self._get_file(expected_prefix, dest_path),
-            message=f"Didn't find downloaded file starting with {expected_prefix}.",
-        )
-
-    def _get_file(self, expected_prefix: str, dest_path: str) -> bool:
-        for entry in os.scandir(self.download_dir):
-            if entry.name.startswith(expected_prefix):
-                shutil.move(entry.path, dest_path)
-                logger.info(f"Downloaded {dest_path}")
-                return True
-        return False
+    def save_url(self, url, dest_path):
+        response = self.driver.request('GET', url)
+        response.raise_for_status()
+        with open(dest_path, 'wb') as fout:
+            fout.write(response.content)
+        logger.info(f"Downloaded {dest_path}")
 
     def get_num_transaction_types(self) -> int:
         filter_link, = self.get_elements_wait("a.transaction-search-link")
