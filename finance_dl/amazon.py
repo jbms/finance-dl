@@ -16,7 +16,8 @@ The following keys may be specified as part of the configuration dict:
   exist, it will be created.
 
 - `amazon_domain`: Optional.  Specifies the Amazon domain from which to download
-  orders.  Must be one of `'.com'` or `'.co.cuk'`.  Defaults to `'.com'`.
+  orders.  Must be one of `'.com'`, `'.co.cuk'` or `'.de'`.  Defaults to
+  `'.com'`.
 
 - `regular`: Optional.  Must be a `bool`.  If `True` (the default), download regular orders.
 
@@ -65,7 +66,7 @@ Interactive shell:
 From the interactive shell, type: `self.run()` to start the scraper.
 
 """
-
+import dataclasses
 import urllib.parse
 import re
 import logging
@@ -75,29 +76,83 @@ from selenium.webdriver.support.ui import Select
 from selenium.webdriver.common.keys import Keys
 from atomicwrites import atomic_write
 from . import scrape_lib
+from typing import List, Optional
 
 logger = logging.getLogger('amazon_scrape')
 
 
+@dataclasses.dataclass
 class Domain:
-    COM = 'com'
-    CO_UK = 'co.uk'
+
+  top_level: str
+
+  sign_in_text: str
+  sign_out_text: str
+  orders_text: str
+  order_details_text: str
+  grand_total_text: str
+
+  digital_orders: bool
+  digital_orders_text: Optional[str] = None
+
+
+DOT_COM = Domain(
+  top_level='com',
+  sign_in_text='Sign In',
+  sign_out_text='Sign Out',
+  orders_text='Your Orders',
+  order_details_text='View order details',
+  grand_total_text='Grand Total:',
+  digital_orders=True,
+  digital_orders_text='Digital Orders',
+)
+
+DOT_CO_UK = Domain(
+  top_level='co.uk',
+  sign_in_text='Sign in',
+  sign_out_text='Sign out',
+  orders_text='Your Orders',
+  order_details_text='View order details',
+  grand_total_text='Grand Total:',
+  digital_orders=False,
+)
+
+DOT_DE = Domain(
+  top_level='de',
+  sign_in_text='Hallo, Anmelden',
+  sign_out_text='Abmelden',
+  orders_text='Meine Bestellungen',
+  order_details_text='Bestelldetails anzeigen',
+  grand_total_text='Gesamtsumme:',
+  digital_orders=False,
+)
+
+DOMAINS = {"." + x.top_level: x for x in [DOT_COM, DOT_CO_UK, DOT_DE]}
 
 
 class Scraper(scrape_lib.Scraper):
-    def __init__(self, credentials, output_directory, amazon_domain=Domain.COM, regular=True, digital=None, order_groups=None, **kwargs):
+    def __init__(self,
+                 credentials,
+                 output_directory,
+                 amazon_domain: str = ".com",
+                 regular: bool = True,
+                 digital: Optional[bool] = None,
+                 order_groups: Optional[List[str]] = None,
+                 **kwargs):
         super().__init__(**kwargs)
-        default_digital = True if amazon_domain == Domain.COM else False
+        if amazon_domain not in DOMAINS:
+          raise ValueError(f"Domain '{amazon_domain} not supported. Supported "
+                           f"domains: {list(DOMAINS)}")
+        self.domain = DOMAINS[amazon_domain]
         self.credentials = credentials
         self.output_directory = output_directory
         self.logged_in = False
-        self.amazon_domain = amazon_domain
         self.regular = regular
-        self.digital = digital if digital is not None else default_digital
+        self.digital = digital if digital is not None else self.domain.digital_orders
         self.order_groups = order_groups
 
     def check_url(self, url):
-        netloc_re = r'^([^\.@]+\.)*amazon.' + self.amazon_domain + '$'
+        netloc_re = r'^([^\.@]+\.)*amazon.' + self.domain.top_level + '$'
         result = urllib.parse.urlparse(url)
         if result.scheme != 'https' or not re.fullmatch(netloc_re, result.netloc):
             raise RuntimeError('Reached invalid URL: %r' % url)
@@ -107,11 +162,11 @@ class Scraper(scrape_lib.Scraper):
 
     def login(self):
         logger.info('Initiating log in')
-        self.driver.get('https://www.amazon.' + self.amazon_domain)
+        self.driver.get('https://www.amazon.' + self.domain.top_level)
         if self.logged_in:
             return
 
-        sign_out_links = self.find_elements_by_descendant_partial_text('Sign Out', 'a')
+        sign_out_links = self.find_elements_by_descendant_partial_text(self.domain.sign_out_text, 'a')
         if len(sign_out_links) > 0:
             logger.info('You must be already logged in!')
             self.logged_in = True
@@ -119,7 +174,7 @@ class Scraper(scrape_lib.Scraper):
 
         logger.info('Looking for sign-in link')
         sign_in_links, = self.wait_and_return(
-            lambda: self.find_visible_elements_by_descendant_partial_text('Sign in', 'a')
+            lambda: self.find_visible_elements_by_descendant_partial_text(self.domain.sign_in_text, 'a')
         )
 
         self.click(sign_in_links[0])
@@ -169,7 +224,7 @@ class Scraper(scrape_lib.Scraper):
 
                 order_ids = set()
                 for invoice_link in invoices:
-                    if "nvoice" not in invoice_link.text:
+                    if self.domain.order_details_text in invoice_link.text:
                         continue
                     href = invoice_link.get_attribute('href')
                     m = re.match('.*[&?]orderID=((?:D)?[0-9\\-]+)(?:&.*)?$', href)
@@ -230,10 +285,9 @@ class Scraper(scrape_lib.Scraper):
                 get_invoice_urls()
 
         if regular:
-            orders_text = "Your Orders" if self.amazon_domain == Domain.CO_UK else "Orders"
             # on co.uk, orders link is hidden behind the menu, hence not directly clickable
             (orders_link,), = self.wait_and_return(
-                lambda: self.find_elements_by_descendant_text_match('. = "{}"'.format(orders_text), 'a', only_displayed=False)
+                lambda: self.find_elements_by_descendant_text_match(f'. = "{self.domain.orders_text}"', 'a', only_displayed=False)
             )
             link = orders_link.get_attribute('href')
             scrape_lib.retry(lambda: self.driver.get(link), retry_delay=2)
@@ -242,7 +296,7 @@ class Scraper(scrape_lib.Scraper):
 
         if digital:
             (digital_orders_link,), = self.wait_and_return(
-                lambda: self.find_elements_by_descendant_text_match('contains(., "Digital Orders")', 'a', only_displayed=True)
+                lambda: self.find_elements_by_descendant_text_match(f'contains(., "{self.domain.digital_orders_text}")', 'a', only_displayed=True)
             )
             scrape_lib.retry(lambda: self.click(digital_orders_link),
                              retry_delay=2)
@@ -262,7 +316,7 @@ class Scraper(scrape_lib.Scraper):
             # Wait until it is all generated.
             def get_source():
                 source = self.driver.page_source
-                if 'Grand Total:' in source:
+                if self.domain.grand_total_text in source:
                     return source
                 return None
 
