@@ -169,8 +169,11 @@ class Scraper(scrape_lib.Scraper):
 
                 order_ids = set()
                 for invoice_link in invoices:
-                    if "nvoice" not in invoice_link.text:
+                    # Amazon Fresh, and regular orders respectively
+                    if invoice_link.text not in ("View order", "View invoice"):
+                        # View invoice -> regular/digital order, View order -> Amazon Fresh
                         continue
+
                     href = invoice_link.get_attribute('href')
                     m = re.match('.*[&?]orderID=((?:D)?[0-9\\-]+)(?:&.*)?$', href)
                     if m is None:
@@ -189,6 +192,14 @@ class Scraper(scrape_lib.Scraper):
                         logger.info('Skipping already-downloaded invoice: %r',
                                     order_id)
                         continue
+                    if invoice_link.text == "View order":
+                        # Amazon Fresh order, construct link to invoice
+                        logger.info("   Found likely Amazon Fresh order. Falling back to direct invoice URL.")
+                        tokens = href.split("/")
+                        tokens = tokens[:4]
+                        tokens[-1] = f"gp/css/summary/print.html?orderID={order_id}"
+                        href = "/".join(tokens)
+
                     invoice_hrefs.append((href, order_id))
                     order_ids_seen.add(order_id)
 
