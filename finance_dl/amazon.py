@@ -89,7 +89,8 @@ class Domain:
   sign_in_text: str
   sign_out_text: str
   orders_text: str
-  order_details_text: str
+  view_order_text: str
+  view_invoice_text: str
   grand_total_text: str
 
   digital_orders: bool
@@ -101,7 +102,8 @@ DOT_COM = Domain(
   sign_in_text='Sign In',
   sign_out_text='Sign Out',
   orders_text='Your Orders',
-  order_details_text='View order details',
+  view_order_text='View order',
+  view_invoice_text='View invoice',
   grand_total_text='Grand Total:',
   digital_orders=True,
   digital_orders_text='Digital Orders',
@@ -112,7 +114,8 @@ DOT_CO_UK = Domain(
   sign_in_text='Sign in',
   sign_out_text='Sign out',
   orders_text='Your Orders',
-  order_details_text='View order details',
+  view_order_text='View order',
+  view_invoice_text='View invoice',
   grand_total_text='Grand Total:',
   digital_orders=False,
 )
@@ -122,7 +125,8 @@ DOT_DE = Domain(
   sign_in_text='Hallo, Anmelden',
   sign_out_text='Abmelden',
   orders_text='Meine Bestellungen',
-  order_details_text='Bestelldetails anzeigen',
+  view_order_text='Meine Bestellungen',
+  view_invoice_text='Meine Rechnungen',
   grand_total_text='Gesamtsumme:',
   digital_orders=False,
 )
@@ -224,8 +228,11 @@ class Scraper(scrape_lib.Scraper):
 
                 order_ids = set()
                 for invoice_link in invoices:
-                    if self.domain.order_details_text in invoice_link.text:
+                    # Amazon Fresh, and regular orders respectively
+                    if invoice_link.text not in (self.domain.view_order_text, self.domain.view_invoice_text):
+                        # View invoice -> regular/digital order, View order -> Amazon Fresh
                         continue
+
                     href = invoice_link.get_attribute('href')
                     m = re.match('.*[&?]orderID=((?:D)?[0-9\\-]+)(?:&.*)?$', href)
                     if m is None:
@@ -244,6 +251,14 @@ class Scraper(scrape_lib.Scraper):
                         logger.info('Skipping already-downloaded invoice: %r',
                                     order_id)
                         continue
+                    if invoice_link.text == "View order":
+                        # Amazon Fresh order, construct link to invoice
+                        logger.info("   Found likely Amazon Fresh order. Falling back to direct invoice URL.")
+                        tokens = href.split("/")
+                        tokens = tokens[:4]
+                        tokens[-1] = f"gp/css/summary/print.html?orderID={order_id}"
+                        href = "/".join(tokens)
+
                     invoice_hrefs.append((href, order_id))
                     order_ids_seen.add(order_id)
 
