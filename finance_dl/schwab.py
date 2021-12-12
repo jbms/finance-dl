@@ -321,13 +321,13 @@ class SchwabScraper(scrape_lib.Scraper):
         logger.info("Logging in.")
 
         self.driver.switch_to.frame(login_frame)
-
-        (username,) = self.get_elements("input#LoginId")
-
+        
+        username =  self.find_username_and_password()[0]
         username.send_keys(self.credentials["username"])
 
         logger.info("Looking for password field.")
-        (password,) = self.get_elements("input#Password")
+        
+        password = self.find_username_and_password()[1]
         password.send_keys(self.credentials["password"])
 
         password.send_keys(Keys.ENTER)
