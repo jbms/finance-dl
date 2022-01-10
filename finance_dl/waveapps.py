@@ -174,14 +174,15 @@ class WaveScraper(object):
                     r = requests.get(image_url)
                     r.raise_for_status()
                     data = r.content
-                    with atomic_write(image_path, mode='wb') as f:
+                    with atomic_write(image_path, mode='wb', overwrite=True) as f:
                         f.write(data)
             with atomic_write(
                     json_path,
                     mode='w',
                     overwrite=True,
                     encoding='utf-8',
-                    newline='\n') as f:
+                    newline='\n',
+                    overwrite=True) as f:
                 json.dump(receipt, f, sort_keys=True, indent='  ')
 
     def run(self):
