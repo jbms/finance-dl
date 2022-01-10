@@ -140,7 +140,7 @@ class Scraper(scrape_lib.Scraper):
             if not os.path.exists(json_path):
                 with atomic_write(
                         json_path, mode='w', encoding='utf-8',
-                        newline='\n') as f:
+                        newline='\n', overwrite=True) as f:
                     f.write(json.dumps(claim, indent='  ').strip() + '\n')
             if not os.path.exists(pdf_path):
                 if not claim['eobLinkUrl'].startswith('https:/'): continue
@@ -149,7 +149,7 @@ class Scraper(scrape_lib.Scraper):
             logger.info('Downloading EOB %d/%d', i + 1, len(downloads_needed))
             self.driver.get(url)
             download_result, = self.wait_and_return(self.get_downloaded_file)
-            with atomic_write(pdf_path, mode='wb') as f:
+            with atomic_write(pdf_path, mode='wb', overwrite=True) as f:
                 f.write(download_result[1])
 
     def run(self):

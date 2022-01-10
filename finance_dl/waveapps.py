@@ -174,7 +174,7 @@ class WaveScraper(object):
                     r = requests.get(image_url)
                     r.raise_for_status()
                     data = r.content
-                    with atomic_write(image_path, mode='wb') as f:
+                    with atomic_write(image_path, mode='wb', overwrite=True) as f:
                         f.write(data)
             with atomic_write(
                     json_path,

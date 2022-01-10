@@ -268,7 +268,7 @@ def save_single_account_data(
         logger.info('Received data %s -- %s', date_range[0], date_range[1])
         filename = ('%s-%s--%d.ofx' % (date_range[0].strftime(date_format),
                                        date_range[1].strftime(date_format), t))
-        with atomic_write(os.path.join(output_dir, filename), mode='wb') as f:
+        with atomic_write(os.path.join(output_dir, filename), mode='wb', overwrite=True) as f:
             f.write(data)
         date_ranges.append((date_range[0].date(), date_range[1].date()))
         date_ranges.sort()

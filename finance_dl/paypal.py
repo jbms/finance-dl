@@ -206,7 +206,7 @@ class Scraper(scrape_lib.Scraper):
                     r = self.driver.request('GET', invoice_url)
                     r.raise_for_status()
                     data = r.content
-                    with atomic_write(pdf_path, mode='wb') as f:
+                    with atomic_write(pdf_path, mode='wb', overwrite=True) as f:
                         f.write(data)
                 invoice_json_path = output_prefix + '.invoice.json'
                 if not os.path.exists(invoice_json_path):
@@ -214,7 +214,8 @@ class Scraper(scrape_lib.Scraper):
                             invoice_json_path,
                             mode='w',
                             encoding='utf-8',
-                            newline='\n') as f:
+                            newline='\n',
+                            overwrite=True) as f:
                         f.write(json.dumps(transaction, indent='  '))
                 continue
             details_url = (
@@ -231,7 +232,7 @@ class Scraper(scrape_lib.Scraper):
                 html_resp.raise_for_status()
                 with atomic_write(
                         html_path, mode='w', encoding='utf-8',
-                        newline='\n') as f:
+                        newline='\n', overwrite=True) as f:
                     # Write with Unicode Byte Order Mark to ensure content will be properly interpreted as UTF-8
                     f.write('\ufeff' + html_resp.text)
             if not os.path.exists(json_path):
@@ -240,7 +241,7 @@ class Scraper(scrape_lib.Scraper):
                 json_resp.raise_for_status()
                 j = json_resp.json()
                 jsonschema.validate(j, transaction_details_schema)
-                with atomic_write(json_path, mode='wb') as f:
+                with atomic_write(json_path, mode='wb', overwrite=True) as f:
                     f.write(
                         json.dumps(j['data']['details'], indent='  ').encode())
 
