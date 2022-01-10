@@ -130,6 +130,9 @@ class Scraper(scrape_lib.Scraper):
         username.send_keys(self.credentials['username'])
         username.send_keys(Keys.ENTER)
 
+        self.finish_login()
+
+    def finish_login(self):
         logger.info('Looking for password link')
         (password, ), = self.wait_and_return(
             lambda: self.find_visible_elements(By.XPATH, '//input[@type="password"]')
@@ -142,7 +145,8 @@ class Scraper(scrape_lib.Scraper):
         )
         rememberMe.click()
 
-        password.send_keys(Keys.ENTER)
+        with self.wait_for_page_load():
+            password.send_keys(Keys.ENTER)
 
         logger.info('Logged in')
         self.logged_in = True
@@ -273,14 +277,18 @@ class Scraper(scrape_lib.Scraper):
             # Wait until it is all generated.
             def get_source():
                 source = self.driver.page_source
-                if 'Grand Total:' in source:
+                if 'Grand Total:' in source or 'Order Canceled' in source:
                     return source
+                elif 'problem loading this order' in source:
+                    raise ValueError(f'Failed to retrieve information for order {order_id}')
+                elif self.find_visible_elements(By.XPATH, '//input[@type="password"]'):
+                    self.finish_login() # fallthrough
+
                 return None
 
             page_source, = self.wait_and_return(get_source)
             if order_id not in page_source:
-                raise ValueError('Failed to retrieve information for order %r'
-                                 % (order_id, ))
+                raise ValueError(f'Failed to retrieve information for order {order_id}')
             with atomic_write(
                     invoice_path, mode='w', encoding='utf-8',
                     newline='\n') as f:
