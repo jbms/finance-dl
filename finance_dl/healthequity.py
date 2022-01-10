@@ -174,7 +174,11 @@ def write_transactions(raw_transactions_data, path):
         rows.append(row_values)
     rows.reverse()
     csv_merge.merge_into_file(filename=path, field_names=output_headers,
-                              data=rows, sort_by=lambda x: x['Date'])
+                              data=rows, sort_by=lambda x: x['Date'],
+                              # Don't consider balance-after in comparing rows,
+                              # because txn order (and therefore running
+                              # balance) is not stable across visits
+                              compare_fields = output_headers[0:3])
 
 
 class Scraper(scrape_lib.Scraper):
