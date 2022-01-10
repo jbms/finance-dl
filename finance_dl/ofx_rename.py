@@ -13,7 +13,9 @@ def fix_name(path, dry_run):
     date_format = '%Y%m%d'
 
     parts = name.split('-')
-    assert len(parts) == 4
+    if len(parts) != 4:
+      print("Skipping %r" % name)
+      return
 
     with open(path, 'rb') as f:
         date_range = get_ofx_date_range(f.read())
@@ -31,7 +33,7 @@ def fix_name(path, dry_run):
 if __name__ == '__main__':
     ap = argparse.ArgumentParser()
     ap.add_argument('paths', nargs='*')
-    args = ap.parse_args()
     ap.add_argument('--dry-run', action='store_true')
+    args = ap.parse_args()
     for path in args.paths:
         fix_name(path, dry_run=args.dry_run)
