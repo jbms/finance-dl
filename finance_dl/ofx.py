@@ -329,7 +329,7 @@ def save_single_account_data(
 
 def save_all_account_data(inst: ofxclient.institution.Institution,
                           output_dir: str,
-                          acct_dir_map: dict=None, **kwargs):
+                          acct_dir_map: dict={}, **kwargs):
     """Attempts to download data for all accounts.
 
     :param inst: The institution connection.
