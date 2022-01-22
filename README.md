@@ -138,6 +138,32 @@ To update all configurations, run:
 
     python -m finance_dl.update --config-module example_finance_dl_config --log-dir logs update --all
 
+Note on Chromedriver Versioning
+==
+
+Chromedriver and Chrome are very tightly coupled; their versions need to
+match. `finance_dl` uses Chromedriver from the `chromedriver_binary` Python
+package (not your system's installed Chromedriver binary). However,
+Chromedriver, by default, uses your system's installed version of Chrome.
+Depending on how you manage the two installations on your system, this
+combination may frequently end up causing `finance_dl` to fail with messages
+like
+
+    selenium.common.exceptions.SessionNotCreatedException: Message: session not created: This version of ChromeDriver only supports Chrome version 97
+    Current browser version is 96.0.4664.45 with binary path /usr/bin/google-chrome
+
+In this event, you have a few options:
+
+1. Explicitly manage your version of the `chromedriver_binary` Python package
+   to match your installed version of Chrome;
+1. Explicitly manage your installed version of Chrome to match your version of
+   the `chromedriver_binary` Python package; or
+1. Install the version of Chrome matching your version of
+   `chromedriver_binary` somewhere other than your system's default Chrome
+   version, and set the environment variable `CHROMEDRIVER_CHROME_BINARY` to
+   point to it. (You can do this from within your finance_dl config script,
+   e.g. with a line like `os.environ[CHROMEDRIVER_CHROME_BINARY] = "/usr/bin/google-chrome-beta"`).
+
 License
 ==
 

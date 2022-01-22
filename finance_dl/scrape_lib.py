@@ -143,6 +143,7 @@ class Scraper(object):
 
         self.chromedriver_bin = chromedriver_bin
         chrome_options = webdriver.ChromeOptions()
+        chrome_options.binary_location = os.getenv("CHROMEDRIVER_CHROME_BINARY")
         log_path = os.getenv("TMPLOG", "/tmp/chromedriver.log")
         service_args = ['--verbose', f'--log-path={log_path}', '--no-sandbox']
         caps = DesiredCapabilities.CHROME
