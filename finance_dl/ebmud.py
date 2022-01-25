@@ -128,7 +128,7 @@ class Scraper(scrape_lib.Scraper):
             logger.info('Downloading %s', statement_path)
             self.click(row.find_element_by_tag_name('a'))
             download_result, = self.wait_and_return(self.get_downloaded_file)
-            with atomic_write(statement_path, mode='wb') as f:
+            with atomic_write(statement_path, mode='wb', overwrite=True) as f:
                 f.write(download_result[1])
             logger.info('Wrote %s', statement_path)
 

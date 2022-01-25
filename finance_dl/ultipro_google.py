@@ -143,7 +143,8 @@ class Scraper(scrape_lib.Scraper):
             if (pay_date, document_number) not in downloaded_statements:
                 logger.info('%s:  Downloading', document_str)
                 link = row.find_element_by_tag_name('a')
-                link.click()
+                with self.wait_for_page_load():
+                  link.click()
                 download_link, = self.wait_and_return(
                     lambda: self.find_element_in_any_frame(
                         By.XPATH,
@@ -160,7 +161,7 @@ class Scraper(scrape_lib.Scraper):
                 output_name = '%s.statement-%s.pdf' % (
                     pay_date.strftime('%Y-%m-%d'), document_number)
                 output_path = os.path.join(self.output_directory, output_name)
-                with atomic_write(output_path, mode='wb') as f:
+                with atomic_write(output_path, mode='wb', overwrite=True) as f:
                     f.write(data)
                 downloaded_statements.add((pay_date, document_number))
                 return True

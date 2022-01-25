@@ -110,7 +110,8 @@ class Scraper(google_takeout.Scraper):
                 self.driver.get(url)
             content = self.driver.page_source
             with atomic_write(
-                    html_path, mode='w', encoding='utf-8', newline='\n') as f:
+                    html_path, mode='w', encoding='utf-8', newline='\n',
+                    overwrite=True) as f:
                 # Write with Unicode Byte Order Mark to ensure content will be properly interpreted as UTF-8
                 f.write('\ufeff' + content)
             logger.info('Write details %d/%d: %s', i, len(need_to_fetch), html_path)
@@ -133,7 +134,7 @@ class Scraper(google_takeout.Scraper):
             json_path = os.path.join(self.output_directory,
                                      'order_' + order_id + '.json')
             if not os.path.exists(json_path):
-                with atomic_write(json_path, mode='wb') as f:
+                with atomic_write(json_path, mode='wb', overwrite=True) as f:
                     f.write(takeout_zip.read(name))
             html_path = os.path.join(self.output_directory, order_id + '.html')
             if os.path.exists(html_path):
