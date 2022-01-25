@@ -34,6 +34,14 @@ The following keys may be specified as part of the configuration dict:
   directory where OFX files are to be written.  If it does not exist, it will be
   created.
 
+- `acct_dir_map`: Optional. A `dict` that maps account numbers as found in the
+  OFX output to the directory name to use to hold OFX files for that account.
+  You can use this to give mnemonic names to the directories in case you have
+  multiple accounts with an institution and don't want to keep track of them
+  by number alone. If you supply a mapping for an account, it will be used
+  *exactly*; if that mapping is not a valid directory name, finance-dl will
+  fail.
+
 - `overlap_days`: Optional.  An `int` that specifies the number of days of
   overlap to use when retrieving additional transactions.  This is intended to
   reduce the chances of transactions being missed (and duplicate transactions
@@ -101,8 +109,12 @@ Example:
             module='finance_dl.ofx',
             ofx_params=ofx_params,
             output_directory=os.path.join(data_dir, 'vanguard'),
+            acct_dir_map={
+                '880012345': 'Roth IRA',
+                '880045678': 'FooCorp 401(k)',
+                '880078901': 'Taxable Account'
+            }
         )
-
 """
 
 import contextlib
@@ -316,7 +328,8 @@ def save_single_account_data(
 
 
 def save_all_account_data(inst: ofxclient.institution.Institution,
-                          output_dir: str, **kwargs):
+                          output_dir: str,
+                          acct_dir_map: dict={}, **kwargs):
     """Attempts to download data for all accounts.
 
     :param inst: The institution connection.
@@ -330,12 +343,14 @@ def save_all_account_data(inst: ofxclient.institution.Institution,
     if slowdown:
         time.sleep(5)
     for a in accounts:
-        try:
-            name = sanitize_account_name(a.number)
-        except ValueError:
-            logger.warning('Account number is invalid path component: %r',
-                           name)
-            continue
+        if a.number in acct_dir_map:
+            name = acct_dir_map[a.number]
+        else:
+            try:
+                name = sanitize_account_name(a.number)
+            except ValueError:
+                name = 'blank'
+                logger.warning(f"Account number is invalid path component: {a.number}; using {name}")
         save_single_account_data(
             account=a, output_dir=os.path.join(output_dir, name), slowdown = slowdown, **kwargs)
 
