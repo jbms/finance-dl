@@ -190,6 +190,12 @@ def get_earliest_data(account, start_date, slowdown = False):
 
     Returns ((startdate, enddate), data).
     """
+    # First try the actual start_date; if it works, no binary search is needed
+    data = download_account_data_starting_from(account, start_date)
+    date_range = get_ofx_date_range(data)
+    if date_range is not None:
+        return date_range, data
+
     logger.info(
         'Binary searching to find earliest data available for account %s.',
         account.number)
