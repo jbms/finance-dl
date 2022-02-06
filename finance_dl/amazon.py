@@ -15,6 +15,12 @@ The following keys may be specified as part of the configuration dict:
   local filesystem where the output will be written.  If the directory does not
   exist, it will be created.
 
+- `dir_per_year`: Optional. If true (default is false), adds one subdirectory
+  to the output for each year's worth of transactions. Useful for filesystems
+  that struggle with very large directories. Probably not that useful for
+  actually finding anything, given the uselessness of Amazon's order ID
+  scheme.
+
 - `amazon_domain`: Optional.  Specifies the Amazon domain from which to download
   orders.  Must be one of `'.com'` or `'.co.cuk'`.  Defaults to `'.com'`.
 
@@ -85,11 +91,12 @@ class Domain:
 
 
 class Scraper(scrape_lib.Scraper):
-    def __init__(self, credentials, output_directory, amazon_domain=Domain.COM, regular=True, digital=None, order_groups=None, **kwargs):
+    def __init__(self, credentials, output_directory, dir_per_year=False, amazon_domain=Domain.COM, regular=True, digital=None, order_groups=None, **kwargs):
         super().__init__(**kwargs)
         default_digital = True if amazon_domain == Domain.COM else False
         self.credentials = credentials
         self.output_directory = output_directory
+        self.dir_per_year = dir_per_year
         self.logged_in = False
         self.amazon_domain = amazon_domain
         self.regular = regular
@@ -151,12 +158,20 @@ class Scraper(scrape_lib.Scraper):
         logger.info('Logged in')
         self.logged_in = True
 
-    def get_invoice_path(self, order_id):
+    def get_invoice_path(self, year, order_id):
+        if self.dir_per_year:
+            return os.path.join(self.output_directory, year, order_id + '.html')
         return os.path.join(self.output_directory, order_id + '.html')
 
     def get_orders(self, regular=True, digital=True):
         invoice_hrefs = []
         order_ids_seen = set()
+        order_ids_downloaded = frozenset([
+            name[:len(name)-5]
+            for _, _, files in os.walk(self.output_directory)
+            for name in files
+            if name.endswith('.html')
+        ])
 
         def get_invoice_urls():
             initial_iteration = True
@@ -187,12 +202,11 @@ class Scraper(scrape_lib.Scraper):
                     if order_id in order_ids:
                         continue
                     order_ids.add(order_id)
-                    invoice_path = self.get_invoice_path(order_id)
                     if order_id in order_ids_seen:
                         logger.info('Skipping already-seen order id: %r',
                                     order_id)
                         continue
-                    if os.path.exists(invoice_path):
+                    if order_id in order_ids_downloaded:
                         logger.info('Skipping already-downloaded invoice: %r',
                                     order_id)
                         continue
@@ -267,8 +281,6 @@ class Scraper(scrape_lib.Scraper):
 
     def retrieve_invoices(self, invoice_hrefs):
         for href, order_id in invoice_hrefs:
-            invoice_path = self.get_invoice_path(order_id)
-
             logger.info('Downloading invoice for order %r', order_id)
             with self.wait_for_page_load():
                 self.driver.get(href)
@@ -289,6 +301,14 @@ class Scraper(scrape_lib.Scraper):
             page_source, = self.wait_and_return(get_source)
             if order_id not in page_source:
                 raise ValueError(f'Failed to retrieve information for order {order_id}')
+            m = re.search('(?:Digital Order: |Order Placed: *\n *</b>\n) *[A-Za-z]* \d+, (\d{4})',
+                         page_source)
+            order_date = m[1] if m else None
+            if order_date is None and self.dir_per_year:
+                    raise ValueError(f'Failed to get date for order {order_id}')
+            invoice_path = self.get_invoice_path(m[1], order_id)
+            if not os.path.exists(os.path.dirname(invoice_path)):
+                os.makedirs(os.path.dirname(invoice_path))
             with atomic_write(
                     invoice_path, mode='w', encoding='utf-8',
                     newline='\n', overwrite=True) as f:

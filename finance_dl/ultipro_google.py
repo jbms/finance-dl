@@ -15,6 +15,9 @@ The following keys may be specified as part of the configuration dict:
   local filesystem where the PDF pay statements will be written.  If the
   directory does not exist, it will be created.
 
+- `dir_per_year`: Optional. If specified and True, finance-dl will create one
+  subdirectory of the `output_directory` for each year of pay statements.
+
 - `profile_dir`: Optional.  If specified, must be a `str` that specifies the
   path to a persistent Chrome browser profile to use.  This should be a path
   used solely for this single configuration; it should not refer to your normal
@@ -63,6 +66,7 @@ From the interactive shell, type: `self.run()` to start the scraper.
 """
 
 import datetime
+import glob
 import logging
 import os
 import re
@@ -82,6 +86,7 @@ class Scraper(scrape_lib.Scraper):
     def __init__(self,
                  credentials,
                  output_directory,
+                 dir_per_year=False,
                  login_url='https://googlemypay.ultipro.com',
                  netloc_re=r'^([^\.@]+\.)*(ultipro.com|google.com)$',
                  **kwargs):
@@ -90,6 +95,7 @@ class Scraper(scrape_lib.Scraper):
         self.login_url = login_url
         self.netloc_re = netloc_re
         self.output_directory = output_directory
+        self.dir_per_year = dir_per_year
 
     def check_url(self, url):
         result = urllib.parse.urlparse(url)
@@ -160,7 +166,12 @@ class Scraper(scrape_lib.Scraper):
                         'Downloaded file size is invalid: %d' % len(data))
                 output_name = '%s.statement-%s.pdf' % (
                     pay_date.strftime('%Y-%m-%d'), document_number)
-                output_path = os.path.join(self.output_directory, output_name)
+                if self.dir_per_year:
+                    output_path = os.path.join(self.output_directory, pay_date.strftime('%Y'), output_name)
+                else:
+                    output_path = os.path.join(self.output_directory, output_name)
+                if not os.path.exists(os.path.dirname(output_path)):
+                    os.makedirs(os.path.dirname(output_path))
                 with atomic_write(output_path, mode='wb', overwrite=True) as f:
                     f.write(data)
                 downloaded_statements.add((pay_date, document_number))
@@ -171,24 +182,22 @@ class Scraper(scrape_lib.Scraper):
 
     def get_existing_statements(self):
         existing_statements = set()
-        if os.path.exists(self.output_directory):
-            for name in os.listdir(self.output_directory):
-                m = re.fullmatch(
-                    r'([0-9]{4})-([0-9]{2})-([0-9]{2})\.statement-([0-9A-Z]+)\.pdf',
-                    name)
-                if m is not None:
-                    date = datetime.date(
-                        year=int(m.group(1)),
-                        month=int(m.group(2)),
-                        day=int(m.group(3)))
-                    statement_number = m.group(4)
-                    existing_statements.add((date, statement_number))
-                    logger.info('Found existing statement %r %r', date,
-                                statement_number)
-                else:
-                    logger.warning(
-                        'Ignoring extraneous file in existing statement directory: %r',
-                        os.path.join(self.output_directory, name))
+        for p in glob.glob(os.path.join(self.output_directory, '**', '*.statement-?*.pdf')):
+            m = re.fullmatch(
+                r'([0-9]{4})-([0-9]{2})-([0-9]{2})\.statement-([0-9A-Z]+)\.pdf',
+                os.path.basename(p))
+            if m is not None:
+                date = datetime.date(
+                    year=int(m.group(1)),
+                    month=int(m.group(2)),
+                    day=int(m.group(3)))
+                statement_number = m.group(4)
+                existing_statements.add((date, statement_number))
+                logger.info('Found existing statement %r %r', date,
+                            statement_number)
+            else:
+                logger.warning(
+                    f'Ignoring extraneous file in existing statement directory: {p}')
         return existing_statements
 
     def download_statements(self):
