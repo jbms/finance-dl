@@ -99,6 +99,7 @@ setuptools.setup(
         'beancount>=2.1.2',
         'atomicwrites>=1.3.0',
         'jsonschema',
+        'python-dateutil',
     ],
     tests_require=[
         'pytest',
