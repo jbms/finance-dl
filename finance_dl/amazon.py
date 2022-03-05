@@ -79,7 +79,6 @@ import urllib.parse
 import re
 import logging
 import os
-import time
 import datetime
 import dateutil.parser
 import bs4
@@ -479,11 +478,6 @@ class Scraper(scrape_lib.Scraper):
 
     def retrieve_invoices(self, invoice_hrefs):
         for href, order_id in invoice_hrefs:
-            # Todo: check if invoice already present
-            # if os.path.exists(invoice_path):
-            #     logger.info('Skipping already-downloaded invoice: %r',
-            #                  order_id)
-            #     continue
             logger.info('Downloading invoice for order %r', order_id)
             with self.wait_for_page_load():
                 self.driver.get(href)
