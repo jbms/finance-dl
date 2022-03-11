@@ -10,15 +10,17 @@ external password store.
 
 For example, you can input the username/password interactively like so:
 
-def CONFIG_paypal():
-    return dict(
-        module='finance_dl.paypal',
-        credentials={
-            'username': input('PayPal username: '),   # <----
-            'password': getpass('PayPal password: '), # <----
-        },
-        output_directory=os.path.join(data_dir, 'paypal'),
-    )
+    from getpass import getpass
+
+    def CONFIG_paypal():
+        return dict(
+            module='finance_dl.paypal',
+            credentials={
+                'username': input('PayPal username: '),   # <----
+                'password': getpass('PayPal password: '), # <----
+            },
+            output_directory=os.path.join(data_dir, 'paypal'),
+        )
 """
 
 import os
