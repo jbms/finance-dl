@@ -370,7 +370,7 @@ class Scraper(scrape_lib.Scraper):
                         # different labels are possible e.g. for regular orders vs. Amazon fresh
                         if invoice_link.text != "":
                             # log non-empty link texts -> may be new type
-                            logger.info(
+                            logger.debug(
                                 'Skipping invoice due to unknown invoice_link.text: %s',
                                 invoice_link.text)
                         return (False, False)
@@ -468,7 +468,8 @@ class Scraper(scrape_lib.Scraper):
             # orders in separate Digital Orders list (relevant for .COM)
             # other domains list digital orders within the regular order list
             (digital_orders_link,), = self.wait_and_return(
-                lambda: self.find_elements_by_descendant_text_match(f'contains(., "{self.domain.digital_orders_text}")', 'a', only_displayed=True)
+                lambda: self.find_elements_by_descendant_text_match(
+                    f'contains(., "{self.domain.digital_orders_menu_text}")', 'a', only_displayed=True)
             )
             scrape_lib.retry(lambda: self.click(digital_orders_link),
                              retry_delay=2)
