@@ -7,6 +7,18 @@ of the configuration.
 Rather than hard code your usernames and passwords into this configuration
 file, you may instead wish to write some code to retrieve them from some
 external password store.
+
+For example, you can input the username/password interactively like so:
+
+def CONFIG_paypal():
+    return dict(
+        module='finance_dl.paypal',
+        credentials={
+            'username': input('PayPal username: '),   # <----
+            'password': getpass('PayPal password: '), # <----
+        },
+        output_directory=os.path.join(data_dir, 'paypal'),
+    )
 """
 
 import os
