@@ -76,10 +76,12 @@ pip install -e .
 Configuration
 ==
 
-Create a Python file like `example_finance_dl_config.py`.
+Create a configuration file called something like `finance_dl_config.py`.
+For a complete example of this file and some documentation, 
+see [example_finance_dl_config.py](example_finance_dl_config.py).
 
 Refer to the documentation of the individual scraper modules for
-details.
+further details.
 
 Basic Usage
 ==
