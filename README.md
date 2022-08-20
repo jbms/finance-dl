@@ -164,7 +164,7 @@ In this event, you have a few options:
    `chromedriver_binary` somewhere other than your system's default Chrome
    version, and set the environment variable `CHROMEDRIVER_CHROME_BINARY` to
    point to it. (You can do this from within your finance_dl config script,
-   e.g. with a line like `os.environ[CHROMEDRIVER_CHROME_BINARY] = "/usr/bin/google-chrome-beta"`).
+   e.g. with a line like `os.environ["CHROMEDRIVER_CHROME_BINARY"] = "/usr/bin/google-chrome-beta"`).
 
 License
 ==
