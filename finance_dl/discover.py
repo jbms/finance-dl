@@ -57,6 +57,7 @@ import logging
 import os
 import shutil
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
+from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 
 from . import scrape_lib
@@ -85,11 +86,11 @@ class Scraper(scrape_lib.Scraper):
         check_url(self.driver.current_url)
 
     def find_account_last4(self):
-        return self.driver.find_element_by_xpath(XPATH_OF_LAST_FOUR_DIGITS).text
+        return self.driver.find_element(By.XPATH, XPATH_OF_LAST_FOUR_DIGITS).text
 
     def login(self):
         try:
-            account = self.driver.find_element_by_xpath(XPATH_OF_LAST_FOUR_DIGITS)
+            account = self.driver.find_element(By.XPATH, XPATH_OF_LAST_FOUR_DIGITS)
             logger.info("Already logged in")
         except NoSuchElementException:
             logger.info('Initiating log in')
