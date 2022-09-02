@@ -132,7 +132,43 @@ import dateutil.parser
 import ofxclient.institution
 import ofxclient
 
-from beancount.ingest.importers.ofx import parse_ofx_time, find_child
+# find_child and parse_ofx_time were derived from implementation in beancount/ingest/importers/ofx.py{,test}
+# Copyright (C) 2016  Martin Blais
+# GNU GPLv2
+def find_child(node, name, conversion=None):
+    """Find a child under the given node and return its value.
+
+    Args:
+      node: A <STMTTRN> bs4.element.Tag.
+      name: A string, the name of the child node.
+      conversion: A callable object used to convert the value to a new data type.
+    Returns:
+      A string, or None.
+    """
+    child = node.find(name)
+    if not child:
+        return None
+    if not child.contents:
+        value = ''
+    else:
+        value = child.contents[0].strip()
+    if conversion:
+        value = conversion(value)
+    return value
+
+
+def parse_ofx_time(date_str):
+    """Parse an OFX time string and return a datetime object.
+
+    Args:
+      date_str: A string, the date to be parsed.
+    Returns:
+      A datetime.datetime instance.
+    """
+    if len(date_str) < 14:
+        return datetime.datetime.strptime(date_str[:8], '%Y%m%d')
+    return datetime.datetime.strptime(date_str[:14], '%Y%m%d%H%M%S')
+
 
 warnings.filterwarnings('ignore', message='split()', module='re')
 
