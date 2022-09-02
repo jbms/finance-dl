@@ -146,7 +146,7 @@ class Scraper(scrape_lib.Scraper):
     def find_account_link_in_any_frame(self):
         for frame in self.for_each_frame():
             try:
-                return self.driver.find_element_by_partial_link_text(self.account_name)
+                return self.driver.find_element(By.PARTIAL_LINK_TEXT, self.account_name)
             except:
                 pass
         raise NoSuchElementException()
@@ -155,7 +155,7 @@ class Scraper(scrape_lib.Scraper):
     def find_download_page_in_any_frame(self):
         for frame in self.for_each_frame():
             try:
-                return self.driver.find_element_by_partial_link_text("Download Transactions")
+                return self.driver.find_element(By.PARTIAL_LINK_TEXT, "Download Transactions")
             except:
                 pass
         raise NoSuchElementException()
@@ -164,8 +164,8 @@ class Scraper(scrape_lib.Scraper):
     def find_date_fields(self):
         for frame in self.for_each_frame():
             try:
-                fromDate = self.driver.find_element_by_id("FromDateInput")
-                toDate = self.driver.find_element_by_id("ToDateInput")
+                fromDate = self.driver.find_element(By.ID, "FromDateInput")
+                toDate = self.driver.find_element(By.ID, "ToDateInput")
                 return (fromDate, toDate)
             except:
                 pass
@@ -175,7 +175,7 @@ class Scraper(scrape_lib.Scraper):
     def find_download_link(self):
         for frame in self.for_each_frame():
             try:
-                return self.driver.find_elements_by_id("DTLLink")[0]
+                return self.driver.find_elements(By.ID, "DTLLink")[0]
             except:
                 pass
         raise NoSuchElementException()

@@ -365,7 +365,7 @@ class Scraper(scrape_lib.Scraper):
                             By.XPATH, '//a[contains(@href, "orderID=")]')
                     else:
                         # order summary link is hidden in submenu for each order
-                        elements = self.driver.find_elements_by_xpath(
+                        elements = self.driver.find_elements(By.XPATH, 
                             '//a[@class="a-popover-trigger a-declarative"]')
                         return [a for a in elements if a.text == self.domain.invoice]
                 
@@ -402,7 +402,7 @@ class Scraper(scrape_lib.Scraper):
                         # submenu containing order summary takes some time to load after click
                         # search for order summary link and compare order_id
                         # repeat until order_id is different to last order_id
-                        summary_links = self.driver.find_elements_by_link_text(
+                        summary_links = self.driver.find_elements(By.LINK_TEXT, 
                             self.domain.order_summary)
                         if summary_links:
                             href = summary_links[0].get_attribute('href')
