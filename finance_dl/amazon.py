@@ -308,7 +308,7 @@ class Scraper(scrape_lib.Scraper):
 
     def get_invoice_path(self, year, order_id):
         if self.dir_per_year:
-            return os.path.join(self.output_directory, year, order_id + '.html')
+            return os.path.join(self.output_directory, str(year), order_id + '.html')
         return os.path.join(self.output_directory, order_id + '.html')
 
     def get_order_id(self, href) -> str:
