@@ -198,7 +198,7 @@ class DOT_DE(Domain):
     def __init__(self) -> None:
         super().__init__(
             top_level='de',
-            sign_in='Hallo, Anmelden',
+            sign_in='Anmelden',
             sign_out='Abmelden',
 
             your_orders='Meine Bestellungen',
