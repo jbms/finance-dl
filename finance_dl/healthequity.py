@@ -74,6 +74,9 @@ import time
 import logging
 import os
 import bs4
+import tempfile
+import openpyxl
+from openpyxl.cell.cell import MergedCell
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import Select
 from selenium.webdriver.common.keys import Keys
@@ -101,43 +104,66 @@ def find_first_matching_date(lines, date_format):
 
 
 FUND_ACTIVITY_HEADERS = [
-    'Fund', 'Name', 'Shares (#)', 'Closing Price', 'Closing Value'
+    'Fund', 'Name', 'Class', 'Target %\nallocation', 'Est. %\nholding', 'Shares\nheld', 'Closing\nprice', 'Closing\nvalue'
 ]
 
+# For compatibility with beancount-import's healthequity plugin, write the old
+# format for balances.csv files. The three new columns are fairly useless
+# anyway, and the new (multiline) column titles are unambiguously worse even if
+# a human were to actually ever read these CSVs.
+OLD_FUND_ACTIVITY_HEADERS = [
+    'Fund','Name',None,None,None,'Shares (#)','Closing Price','Closing Value'
+]
 
 def write_balances(data, path):
     rows = []
     for entry in data:
-        keys = [x[0] for x in entry]
-        if keys == FUND_ACTIVITY_HEADERS:
+        keys, values = zip(*entry)
+        if list(keys) == FUND_ACTIVITY_HEADERS:
+            entry = [
+                (k, v.strip().split('\n')[0].strip('$'))
+                for (k, v) in zip(OLD_FUND_ACTIVITY_HEADERS, values)
+                if k
+            ]
             row_values = dict(entry)
             row_values['Fund'] = row_values['Fund'].strip().split()[0]
+            row_values['Name'] = row_values['Name'].strip().split('\n')[0]
             rows.append(row_values)
-    csv_merge.write_csv(FUND_ACTIVITY_HEADERS, rows, path)
+    csv_merge.write_csv([h for h in OLD_FUND_ACTIVITY_HEADERS if h], rows, path)
 
 
 def write_fund_activity(raw_transactions_data, path):
-    input_date_format = '%m/%d/%Y'
-    output_date_format = '%Y-%m-%d'
-    soup = bs4.BeautifulSoup(raw_transactions_data.decode('utf-8'), 'lxml')
+    def format_cell(c):
+        if c.is_date:
+            return c.value.strftime('%Y-%m-%d')
+        if c.number_format[0] == '$':
+            base = '${:,.2f}'.format(abs(c.value))
+            if c.value >= 0:
+                return base
+            else:
+                return '(%s)' % base
+        return str(c.value)
+
+    wb = None
+    with tempfile.NamedTemporaryFile(suffix='.xlsx') as xlsx:
+        xlsx.write(raw_transactions_data)
+        xlsx.flush()
+        wb = openpyxl.load_workbook(xlsx.name)
+
+    ws = wb.worksheets[0]
     headers = [
         'Date', 'Fund', 'Category', 'Description', 'Price', 'Amount', 'Shares',
         'Total Shares', 'Total Value'
     ]
     rows = []
-    for row in soup.find_all('tr'):
-        cells = [str(x.text).strip() for x in row.find_all('td')]
-        while cells and not cells[-1].strip():
-            del cells[-1]
-        if len(cells) == 1:
+    for row in ws.rows:
+        if any([isinstance(c, MergedCell) for c in row]):
             continue
-        assert len(cells) == len(headers)
+        assert len(row) == len(headers)
+        cells = [format_cell(c) for c in row]
         if cells == headers:
             continue
-        row_values = dict(zip(headers, cells))
-        row_values['Date'] = datetime.datetime.strptime(
-            row_values['Date'], input_date_format).strftime(output_date_format)
-        rows.append(row_values)
+        rows.append(dict(zip(headers, cells)))
     csv_merge.merge_into_file(filename=path, field_names=headers, data=rows,
                               sort_by=lambda x: x['Date'])
 
@@ -157,8 +183,8 @@ def write_transactions(raw_transactions_data, path):
             continue
         if cells[0] == 'TOTAL':
             continue
-        assert len(cells) == len(headers)
-        if cells == headers:
+        assert len(cells) >= len(headers), (cells, headers)
+        if cells[:len(headers)] == headers:
             continue
         row_values = dict(zip(headers, cells))
         # Sanitize whitespace in description
@@ -205,7 +231,7 @@ class Scraper(scrape_lib.Scraper):
 
     def download_transaction_history(self):
         (transactions_link, ), = self.wait_and_return(
-            lambda: self.find_visible_elements_by_descendant_partial_text('Transaction History', 'td'))
+            lambda: self.find_visible_elements(By.ID, 'viewAllLink'))
         scrape_lib.retry(transactions_link.click, retry_delay=2)
         (date_select, ), = self.wait_and_return(
             lambda: self.find_visible_elements_by_descendant_partial_text('All dates', 'select'))
@@ -244,7 +270,7 @@ class Scraper(scrape_lib.Scraper):
     def get_investment_balance(self):
         headers = FUND_ACTIVITY_HEADERS
         (table, ), = self.wait_and_return(
-            lambda: scrape_lib.find_table_by_headers(self, headers))
+            lambda: self.driver.find_elements(By.TAG_NAME, 'table'))
         data = scrape_lib.extract_table_data(table, headers)
         return data
 
@@ -256,16 +282,16 @@ class Scraper(scrape_lib.Scraper):
     def download_fund_activity(self):
         logger.info('Looking for fund activity link')
         (fund_activity_link,), = self.wait_and_return(
-            lambda: self.find_visible_elements(By.XPATH, '//a[contains(@href, "FundActivity")]'))
+            lambda: self.find_visible_elements(By.ID, 'EditPortfolioTab'))
         scrape_lib.retry(fund_activity_link.click, retry_delay=2)
-        logger.info('Selecting date ranage for fund activity')
+        logger.info('Selecting date range for fund activity')
         (start_date,), = self.wait_and_return(
-            lambda: self.find_visible_elements(By.XPATH, '//input[@type="text" and contains(@id, "dateSelectStart")]'))
+            lambda: self.find_visible_elements(By.XPATH, '//input[@type="text" and contains(@id, "startDate")]'))
         start_date.clear()
-        start_date.send_keys('01011900')
+        start_date.send_keys('01/01/1900\n')
         logger.info('Downloading fund activity')
         (download_link, ), = self.wait_and_return(
-            lambda: self.driver.find_elements_by_link_text('Download'))
+            lambda: self.find_visible_elements(By.ID, 'fundPerformanceDownload'))
         scrape_lib.retry(download_link.click, retry_delay=2)
         logger.info('Waiting for fund activity download')
         download_result, = self.wait_and_return(self.get_downloaded_file)
