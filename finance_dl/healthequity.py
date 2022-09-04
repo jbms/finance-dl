@@ -189,6 +189,8 @@ def write_transactions(raw_transactions_data, path):
         row_values = dict(zip(headers, cells))
         # Sanitize whitespace in description
         row_values['Transaction'] = ' '.join(row_values['Transaction'].split())
+        # Remove duplicate tax year in description
+        row_values['Transaction'] = re.sub(r'(\(Tax year: \d+\)) *\1', r'\1', row_values['Transaction'])
         row_values['Cash Balance'] = row_values.pop('HSA Cash Balance')
 
         # Sanitize date_str
