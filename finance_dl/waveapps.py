@@ -75,7 +75,7 @@ Example:
 
 """
 
-from typing import List, Any
+from typing import List, Any, Optional
 import contextlib
 import logging
 import json
@@ -154,7 +154,7 @@ class WaveScraper(object):
         receipts.extend(cur_list)
         return receipts
 
-    def save_receipts(self, receipts: List[Any], output_directory: str = None):
+    def save_receipts(self, receipts: List[Any], output_directory: Optional[str] = None):
         if not output_directory:
             output_directory = self.output_directory
         if not os.path.exists(output_directory):
