@@ -51,6 +51,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import Select
 from selenium.webdriver.common.keys import Keys
 from selenium.common.exceptions import NoSuchElementException
+from requests.exceptions import HTTPError
 import jsonschema
 from atomicwrites import atomic_write
 from . import scrape_lib
@@ -232,15 +233,6 @@ class Scraper(scrape_lib.Scraper):
                 + transaction_id)
             html_path = output_prefix + '.html'
             json_path = output_prefix + '.json'
-            if not os.path.exists(html_path):
-                logging.info('Retrieving HTML %s', details_url)
-                html_resp = self.driver.request('GET', details_url)
-                html_resp.raise_for_status()
-                with atomic_write(
-                        html_path, mode='w', encoding='utf-8',
-                        newline='\n', overwrite=True) as f:
-                    # Write with Unicode Byte Order Mark to ensure content will be properly interpreted as UTF-8
-                    f.write('\ufeff' + html_resp.text)
             if not os.path.exists(json_path):
                 logging.info('Retrieving JSON %s', inline_details_url)
                 json_resp = self.make_json_request(inline_details_url)
@@ -250,6 +242,25 @@ class Scraper(scrape_lib.Scraper):
                 with atomic_write(json_path, mode='wb', overwrite=True) as f:
                     f.write(
                         json.dumps(j['data'], indent='  ', sort_keys=True).encode())
+            if not os.path.exists(html_path):
+                logging.info('Retrieving HTML %s', details_url)
+                html_resp = self.driver.request('GET', details_url)
+                try:
+                    html_resp.raise_for_status()
+                except HTTPError as e:
+                    # in rare cases no HTML detail page exists but JSON could be extracted
+                    # if JSON is present gracefully skip HTML download if it fails
+                    if os.path.exists(json_path):
+                        # HTML download failed but JSON present -> only log warning
+                        logging.warning('Retrieving HTML %s failed due to %s but JSON is already present. Continuing...', details_url, e)
+                    else:
+                        logging.error('Retrieving HTML %s failed due to %s and no JSON is present. Aborting...', details_url, e)
+                        raise e
+                with atomic_write(
+                        html_path, mode='w', encoding='utf-8',
+                        newline='\n', overwrite=True) as f:
+                    # Write with Unicode Byte Order Mark to ensure content will be properly interpreted as UTF-8
+                    f.write('\ufeff' + html_resp.text)
 
     def run(self):
         if not os.path.exists(self.output_directory):
