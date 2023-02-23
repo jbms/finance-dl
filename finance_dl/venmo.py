@@ -152,28 +152,35 @@ class Scraper(scrape_lib.Scraper):
         logger.info('Initiating log in')
         self.driver.get('https://venmo.com/account/sign-in')
 
-        (username, password), = self.wait_and_return(
-            self.find_username_and_password_in_any_frame)
-        logger.info('Entering username and password')
-        username.send_keys(self.credentials['username'])
-        password.send_keys(self.credentials['password'])
-        with self.wait_for_page_load():
-            password.send_keys(Keys.ENTER)
+        try: 
+            username = self.driver.find_elements_by_xpath('//*[@id="email"]')[-1]
+            logger.info('Entering username')
+            username.send_keys(self.credentials['username'])
+            username.send_keys(Keys.ENTER)
+        except: pass
+        try:
+            password = self.driver.find_elements_by_xpath('//*[@id="password"]')[-1]
+            password.send_keys(self.credentials['password'])
+            logger.info('Entering password')
+        except:
+            pass
+        password.send_keys(Keys.ENTER)
+        time.sleep(5)
         logger.info('Logged in')
         self.logged_in = True
+        return
 
     def goto_statement(self, start_date, end_date):
         url_date_format = '%m-%d-%Y'
         with self.wait_for_page_load():
             self.driver.get(
-                'https://venmo.com/account/statement?end=%s&start=%s' %
-                (end_date.strftime(url_date_format),
-                 start_date.strftime(url_date_format)))
+                'https://venmo.com/account/statement?&start=%s' %
+                (start_date.strftime(url_date_format)))
 
     def download_csv(self):
         logger.info('Looking for CSV link')
         download_button, = self.wait_and_locate(
-            (By.XPATH, '//a[text() = "Download CSV"]'))
+            (By.XPATH, '//*[@id="__next"]/div/div[1]/div/div/main/div/div[2]/div[1]/div[2]/div/a'))
         self.click(download_button)
         logger.info('Waiting for CSV download')
         download_result, = self.wait_and_return(self.get_downloaded_file)
@@ -184,15 +191,15 @@ class Scraper(scrape_lib.Scraper):
         try:
             balance_node = self.driver.find_element(
                 By.XPATH, '//*[@class="%s"]/child::*[@class="balance-amt"]' %
-                balance_type)
+                balance_type) 
             return balance_node.text
         except NoSuchElementException:
             return None
 
     def get_balances(self):
         def maybe_get_balance():
-            start_balance = self.get_balance('start-balance')
-            end_balance = self.get_balance('end-balance')
+            start_balance = self.driver.find_element_by_xpath('//*[@id="__next"]/div/div[1]/div/div/main/div/div[2]/div[1]/div[1]/div/div/div[1]/section').text.replace('\n','')
+            end_balance = self.driver.find_element_by_xpath('//*[@id="__next"]/div/div[1]/div/div/main/div/div[2]/div[1]/div[1]/div/div/div[2]/section').text.replace('\n','')
             if start_balance is not None and end_balance is not None:
                 return (start_balance, end_balance)
             try:
@@ -217,17 +224,21 @@ class Scraper(scrape_lib.Scraper):
         next(io_iter)
         csv_reader = csv.DictReader(str_io)
         field_names = csv_reader.fieldnames
+        field_names = field_names[1:]
         rows = [row for row in csv_reader if row['Datetime'].strip()]
 
         # Make sure rows are valid transactions with a date
         good_rows = []
         for r in rows:
+            if '' in r:
+                del r['']
             if 'Datetime' not in r or r['Datetime'] != '':
                 good_rows.append(r)
             else:
                 logging.info('Invalid date in row: {}'.format(r))
 
         rows = good_rows
+        
 
         def get_sort_key(row):
             return parse_csv_date(row['Datetime']).timestamp()
@@ -294,6 +305,12 @@ class Scraper(scrape_lib.Scraper):
             }],
             sort_by=lambda row: (row['Start Date'], row['End Date']),
         )
+    
+    def last_day_of_month(self, any_day):
+        # The day 28 exists in every month. 4 days later, it's always next month
+        next_month = any_day.replace(day=28) + datetime.timedelta(days=4)
+        # subtracting the number of the current day brings us back one month
+        return next_month - datetime.timedelta(days=next_month.day)
 
     def fetch_history(self):
 
@@ -303,7 +320,7 @@ class Scraper(scrape_lib.Scraper):
 
         while start_date <= self.latest_history_date:
             end_date = min(self.latest_history_date,
-                           start_date + datetime.timedelta(days=89))
+                           self.last_day_of_month(start_date))
             self.fetch_statement(start_date, end_date)
             start_date = end_date + datetime.timedelta(days=1)
 
