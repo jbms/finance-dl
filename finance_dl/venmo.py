@@ -353,12 +353,19 @@ class Scraper(scrape_lib.Scraper):
 
         while start_date <= self.latest_history_date:
             end_date = min(self.latest_history_date,
-                           start_date + datetime.timedelta(days=89))
+                           self.last_day_of_month(start_date))
             self.fetch_statement(start_date, end_date)
             start_date = end_date + datetime.timedelta(days=1)
 
             logger.debug('Venmo hack: waiting 5 seconds between requests')
             time.sleep(5)
+
+
+    def last_day_of_month(self, any_day):
+        # The day 28 exists in every month. 4 days later, it's always next month
+        next_month = any_day.replace(day=28) + datetime.timedelta(days=4)
+        # subtracting the number of the current day brings us back one month
+        return next_month - datetime.timedelta(days=next_month.day)
 
     def run(self):
         self.login()
