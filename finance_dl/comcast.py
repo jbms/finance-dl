@@ -150,7 +150,7 @@ class Scraper(scrape_lib.Scraper):
                 pass
         bills_link = get_bills_link()
 
-        self.driver.find_element_by_tag_name('body').send_keys(Keys.ESCAPE)
+        self.driver.find_element(By.TAG_NAME, 'body').send_keys(Keys.ESCAPE)
         bills_link.click()
 
         def get_links():
@@ -168,7 +168,7 @@ class Scraper(scrape_lib.Scraper):
             cur_el = link
             bill_date = None
             while True:
-                parent = cur_el.find_element_by_xpath('..')
+                parent = cur_el.find_element(By.XPATH, '..')
                 if parent == cur_el:
                     break
                 try:

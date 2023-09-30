@@ -43,6 +43,13 @@ The following keys may be specified as part of the configuration dict:
   order page "order groups" that will be scanned for orders to download. Order groups
   include years (e.g. '2020'), as well as 'last 30 days' and 'past 3 months'.
 
+- `download_preorder_invoices`: Optional. If specified and True, invoices for
+  preorders (i.e. orders that have not actually been charged yet) will be
+  skipped. Such preorder invoices are not typically useful for accounting
+  since they claim a card was charged even though it actually has not been
+  yet; they get replaced with invoices containing the correct information when
+  the order is actually fulfilled.
+
 Output format:
 ==============
 
@@ -112,6 +119,7 @@ class Domain():
     grand_total: str
     grand_total_digital: str
     order_cancelled: str
+    pre_order: str
 
     digital_order: str
     regular_order_placed: str
@@ -144,6 +152,7 @@ class DOT_COM(Domain):
             grand_total='Grand Total:',
             grand_total_digital='Grand Total:',
             order_cancelled='Order Canceled',
+            pre_order='Pre-order',
 
             digital_order='Digital Order: (.*)',
             regular_order_placed=r'(?:Subscribe and Save )?Order Placed:\s+([^\s]+ \d+, \d{4})',
@@ -176,6 +185,7 @@ class DOT_CO_UK(Domain):
             grand_total='Grand Total:',
             grand_total_digital='Grand Total:',
             order_cancelled='Order Canceled',
+            pre_order='Pre-order',
 
             digital_order='Digital Order: (.*)',
             regular_order_placed=r'(?:Subscribe and Save )?Order Placed:\s+([^\s]+ \d+, \d{4})',
@@ -206,6 +216,7 @@ class DOT_DE(Domain):
             grand_total='Gesamtsumme:',
             grand_total_digital='Endsumme:',
             order_cancelled='Order Canceled',
+            pre_order='Pre-order',
 
             digital_order='Digitale Bestellung: (.*)',
             regular_order_placed=r'(?:Getätigte Spar-Abo-Bestellung|Bestellung aufgegeben am):\s+(\d+\. [^\s]+ \d{4})',
@@ -241,6 +252,7 @@ class Scraper(scrape_lib.Scraper):
                  regular: bool = True,
                  digital: Optional[bool] = None,
                  order_groups: Optional[List[str]] = None,
+                 download_preorder_invoices: bool = False,
                  **kwargs):
         super().__init__(**kwargs)
         if amazon_domain not in DOMAINS:
@@ -254,6 +266,7 @@ class Scraper(scrape_lib.Scraper):
         self.regular = regular
         self.digital_orders_menu = digital if digital is not None else self.domain.digital_orders_menu
         self.order_groups = order_groups
+        self.download_preorder_invoices = download_preorder_invoices
 
     def check_url(self, url):
         netloc_re = r'^([^\.@]+\.)*amazon.' + self.domain.top_level + '$'
@@ -312,7 +325,7 @@ class Scraper(scrape_lib.Scraper):
 
     def get_invoice_path(self, year, order_id):
         if self.dir_per_year:
-            return os.path.join(self.output_directory, year, order_id + '.html')
+            return os.path.join(self.output_directory, str(year), order_id + '.html')
         return os.path.join(self.output_directory, order_id + '.html')
 
     def get_order_id(self, href) -> str:
@@ -393,7 +406,7 @@ class Scraper(scrape_lib.Scraper):
                         # submenu containing order summary takes some time to load after click
                         # search for order summary link and compare order_id
                         # repeat until order_id is different to last order_id
-                        summary_links = self.driver.find_elements_by_link_text(
+                        summary_links = self.driver.find_elements(By.LINK_TEXT, 
                             self.domain.order_summary)
                         if summary_links:
                             href = summary_links[0].get_attribute('href')
@@ -505,6 +518,10 @@ class Scraper(scrape_lib.Scraper):
                 return None
 
             page_source, = self.wait_and_return(get_source)
+            if self.domain.pre_order in page_source and not self.download_preorder_invoices:
+                    # Pre-orders don't have enough information to download yet. Skip them.
+                    logger.info(f'Skipping pre-order invoice {order_id}')
+                    return
             if order_id not in page_source:
                 raise ValueError(f'Failed to retrieve information for order {order_id}')
 

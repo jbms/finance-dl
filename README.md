@@ -76,10 +76,12 @@ pip install -e .
 Configuration
 ==
 
-Create a Python file like `example_finance_dl_config.py`.
+Create a configuration file called something like `finance_dl_config.py`.
+For a complete example of this file and some documentation, 
+see [example_finance_dl_config.py](example_finance_dl_config.py).
 
 Refer to the documentation of the individual scraper modules for
-details.
+further details.
 
 Basic Usage
 ==
@@ -162,7 +164,7 @@ In this event, you have a few options:
    `chromedriver_binary` somewhere other than your system's default Chrome
    version, and set the environment variable `CHROMEDRIVER_CHROME_BINARY` to
    point to it. (You can do this from within your finance_dl config script,
-   e.g. with a line like `os.environ[CHROMEDRIVER_CHROME_BINARY] = "/usr/bin/google-chrome-beta"`).
+   e.g. with a line like `os.environ["CHROMEDRIVER_CHROME_BINARY"] = "/usr/bin/google-chrome-beta"`).
 
 License
 ==

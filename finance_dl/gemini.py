@@ -187,8 +187,9 @@ def get_balances_and_prices(requester, api_key, api_secret, data_dir):
     logger.info(f"Got balances. Found {len(balances)} currencies.")
 
     # Prices
-    tickers = [b['currency'] + "USD" for b in balances if b['currency'] != 'USD']
+    tickers = [b['currency'] + "USD" for b in balances if b['currency'] != 'USD' and b['currency'] != 'GUSD']
     prices = {}
+    prices['GUSD'] = 1
     for t in tickers:
         obj = requester.make_request(TICKERS_URL+"/"+t.lower(), None, get = True)
         price = (float(obj['ask']) + float(obj['bid']))/2

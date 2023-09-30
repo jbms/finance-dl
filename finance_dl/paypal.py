@@ -51,6 +51,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import Select
 from selenium.webdriver.common.keys import Keys
 from selenium.common.exceptions import NoSuchElementException
+from requests.exceptions import HTTPError
 import jsonschema
 from atomicwrites import atomic_write
 from . import scrape_lib
@@ -68,24 +69,30 @@ transaction_list_schema = {
     'properties': {
         'data': {
             'type': 'object',
-            'required': ['activity'],
+            'required': ['data'],
             'properties': {
-                'activity': {
+                'data': {
                     'type': 'object',
-                    'required': ['transactions'],
+                    'required': ['activity'],
                     'properties': {
-                        'transactions': {
-                            'type': 'array',
-                            'items': {
-                                'type': 'object',
-                                'required': ['id'],
-                                'properties': {
-                                    'id': {
-                                        'type': 'string',
-                                        'pattern': r'^[A-Za-z0-9\-]+$',
-                                    },
+                        'activity': {
+                            'type': 'object',
+                            'required': ['transactions'],
+                            'properties': {
+                                'transactions': {
+                                    'type': 'array',
+                                    'items': {
+                                        'type': 'object',
+                                        'required': ['id'],
+                                        'properties': {
+                                            'id': {
+                                                'type': 'string',
+                                                'pattern': r'^[A-Za-z0-9\-]+$',
+                                            },
+                                        },
+                                    }
                                 },
-                            }
+                            },
                         },
                     },
                 },
@@ -102,9 +109,9 @@ transaction_details_schema = {
     'properties': {
         'data': {
             'type': 'object',
-            'required': ['details'],
+            'required': ['amount'],
             'properties': {
-                'details': {
+                'amount': {
                     'type': 'object',
                 },
             },
@@ -168,9 +175,9 @@ class Scraper(scrape_lib.Scraper):
         logging.info('Getting CSRF token')
         self.driver.get('https://www.paypal.com/myaccount/transactions/')
         # Get CSRF token
-        body_element, = self.wait_and_locate((By.XPATH,
-                                              '//body[@data-token!=""]'))
-        self.csrf_token = body_element.get_attribute('data-token')
+        body_element, = self.wait_and_locate((By.ID, "__react_data__"))
+        attribute_object = json.loads(body_element.get_attribute("data"))
+        self.csrf_token = attribute_object["_csrf"]
         return self.csrf_token
 
     def get_transaction_list(self):
@@ -188,7 +195,7 @@ class Scraper(scrape_lib.Scraper):
         resp.raise_for_status()
         j = resp.json()
         jsonschema.validate(j, transaction_list_schema)
-        return j['data']['activity']['transactions']
+        return j['data']['data']['activity']['transactions']
 
     def save_transactions(self):
         transaction_list = self.get_transaction_list()
@@ -226,15 +233,6 @@ class Scraper(scrape_lib.Scraper):
                 + transaction_id)
             html_path = output_prefix + '.html'
             json_path = output_prefix + '.json'
-            if not os.path.exists(html_path):
-                logging.info('Retrieving HTML %s', details_url)
-                html_resp = self.driver.request('GET', details_url)
-                html_resp.raise_for_status()
-                with atomic_write(
-                        html_path, mode='w', encoding='utf-8',
-                        newline='\n', overwrite=True) as f:
-                    # Write with Unicode Byte Order Mark to ensure content will be properly interpreted as UTF-8
-                    f.write('\ufeff' + html_resp.text)
             if not os.path.exists(json_path):
                 logging.info('Retrieving JSON %s', inline_details_url)
                 json_resp = self.make_json_request(inline_details_url)
@@ -243,7 +241,26 @@ class Scraper(scrape_lib.Scraper):
                 jsonschema.validate(j, transaction_details_schema)
                 with atomic_write(json_path, mode='wb', overwrite=True) as f:
                     f.write(
-                        json.dumps(j['data']['details'], indent='  ').encode())
+                        json.dumps(j['data'], indent='  ', sort_keys=True).encode())
+            if not os.path.exists(html_path):
+                logging.info('Retrieving HTML %s', details_url)
+                html_resp = self.driver.request('GET', details_url)
+                try:
+                    html_resp.raise_for_status()
+                except HTTPError as e:
+                    # in rare cases no HTML detail page exists but JSON could be extracted
+                    # if JSON is present gracefully skip HTML download if it fails
+                    if os.path.exists(json_path):
+                        # HTML download failed but JSON present -> only log warning
+                        logging.warning('Retrieving HTML %s failed due to %s but JSON is already present. Continuing...', details_url, e)
+                    else:
+                        logging.error('Retrieving HTML %s failed due to %s and no JSON is present. Aborting...', details_url, e)
+                        raise e
+                with atomic_write(
+                        html_path, mode='w', encoding='utf-8',
+                        newline='\n', overwrite=True) as f:
+                    # Write with Unicode Byte Order Mark to ensure content will be properly interpreted as UTF-8
+                    f.write('\ufeff' + html_resp.text)
 
     def run(self):
         if not os.path.exists(self.output_directory):

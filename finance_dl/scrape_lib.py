@@ -23,12 +23,12 @@ def all_conditions(*conditions):
 
 
 def extract_table_data(table, header_names, single_header=False):
-    rows = table.find_elements_by_xpath('thead/tr | tbody/tr | tr')
+    rows = table.find_elements(By.XPATH, 'thead/tr | tbody/tr | tr')
     headers = []
     seen_data = False
     data = []
     for row in rows:
-        cell_elements = row.find_elements_by_xpath('th | td')
+        cell_elements = row.find_elements(By.XPATH, 'th | td')
         cell_values = [x.text.strip() for x in cell_elements]
         is_header_values = [x in header_names for x in cell_values if x]
         if len(is_header_values) == 0:
@@ -217,7 +217,7 @@ class Scraper(object):
     # See http://www.obeythetestinggoat.com/how-to-get-selenium-to-wait-for-page-load-after-a-click.html
     @contextlib.contextmanager
     def wait_for_page_load(self, timeout=30):
-        old_page = self.driver.find_element_by_tag_name('html')
+        old_page = self.driver.find_element(By.TAG_NAME, 'html')
         yield
         WebDriverWait(self.driver, timeout).until(
             expected_conditions.staleness_of(old_page),
@@ -355,7 +355,7 @@ class Scraper(object):
 
     def find_elements_by_descendant_partial_text(self, text, element_name,
                                                  only_displayed=False):
-        all_elements = self.driver.find_elements_by_xpath(
+        all_elements = self.driver.find_elements(By.XPATH, 
             "//text()[contains(.,%r)]/ancestor::*[self::%s][1]" %
             (text, element_name))
         if only_displayed:
@@ -364,7 +364,7 @@ class Scraper(object):
 
     def find_elements_by_descendant_text_match(self, text_match, element_name,
                                                only_displayed=False):
-        all_elements = self.driver.find_elements_by_xpath(
+        all_elements = self.driver.find_elements(By.XPATH, 
             "//text()[%s]/ancestor::*[self::%s][1]" % (text_match,
                                                        element_name))
         if only_displayed:
@@ -372,7 +372,7 @@ class Scraper(object):
         return all_elements
 
     def find_visible_elements_by_partial_text(self, text, element_name):
-        all_elements = self.driver.find_elements_by_xpath(
+        all_elements = self.driver.find_elements(By.XPATH, 
             "//%s[contains(.,%r)]" % (element_name, text))
         return [x for x in all_elements if is_displayed(x)]
 
