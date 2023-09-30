@@ -356,8 +356,8 @@ class Scraper(scrape_lib.Scraper):
                             By.XPATH, '//a[contains(@href, "orderID=")]')
                     else:
                         # order summary link is hidden in submenu for each order
-                        elements = self.driver.find_elements_by_xpath(
-                            '//a[@class="a-popover-trigger a-declarative"]')
+                        elements = self.driver.find_elements(By.XPATH, 
+                            '//a[contains(@href, "invoice/invoice.html")]')
                         return [a for a in elements if a.text == self.domain.invoice]
                 
                 if initial_iteration:
@@ -437,7 +437,7 @@ class Scraper(scrape_lib.Scraper):
 
             while True:
                 (order_filter,), = self.wait_and_return(
-                    lambda: self.find_visible_elements(By.XPATH, '//select[@name="orderFilter"]')
+                    lambda: self.find_visible_elements(By.XPATH, '//select[@name="timeFilter"]')
                 )
                 order_select = Select(order_filter)
                 num_options = len(order_select.options)
