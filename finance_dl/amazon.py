@@ -101,6 +101,7 @@ class Domain():
 
     # Find invoices.
     your_orders: str
+    archived_orders: str
     invoice: str
     invoice_link: List[str]
     order_summary: str
@@ -131,6 +132,7 @@ class DOT_COM(Domain):
             sign_out='Sign Out',
 
             your_orders='Your Orders',
+            archived_orders='Archived Orders',
             invoice='Invoice',
             invoice_link=["View order", "View invoice"],
             # View invoice -> regular/digital order, View order -> Amazon Fresh
@@ -162,6 +164,7 @@ class DOT_CO_UK(Domain):
             sign_out='Sign out',
 
             your_orders='Your Orders',
+            archived_orders='Archived Orders',
             invoice='Invoice',
             invoice_link=["View order", "View invoice"],
             # View invoice -> regular/digital order, View order -> Amazon Fresh
@@ -192,6 +195,7 @@ class DOT_DE(Domain):
             sign_out='Abmelden',
 
             your_orders='Meine Bestellungen',
+            archived_orders='Archivierte Bestellungen',
             invoice='Rechnung',
             invoice_link=["Bestelldetails anzeigen"],
             fresh_fallback=None,
@@ -443,7 +447,7 @@ class Scraper(scrape_lib.Scraper):
                     order_select_index]
                 option_text = option.text.strip()
                 order_select_index += 1
-                if option_text == 'Archived Orders':
+                if option_text == self.domain.archived_orders:
                     continue
                 if self.order_groups is not None and option_text not in self.order_groups:
                     logger.info('Skipping order group: %r', option_text)
