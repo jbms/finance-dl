@@ -175,8 +175,8 @@ class Scraper(scrape_lib.Scraper):
         logging.info('Getting CSRF token')
         self.driver.get('https://www.paypal.com/myaccount/transactions/')
         # Get CSRF token
-        body_element, = self.wait_and_locate((By.ID, "__react_data__"))
-        attribute_object = json.loads(body_element.get_attribute("data"))
+        body_element, = self.wait_and_locate((By.ID, "__APP_DATA__"))
+        attribute_object = json.loads(body_element.get_attribute("innerHTML"))
         self.csrf_token = attribute_object["_csrf"]
         return self.csrf_token
 
