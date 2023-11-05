@@ -329,7 +329,7 @@ class Scraper(scrape_lib.Scraper):
         return os.path.join(self.output_directory, order_id + '.html')
 
     def get_order_id(self, href) -> str:
-        m = re.match('.*[&?]orderID=((?:D)?[0-9\\-]+)(?:&.*)?$', href)
+        m = re.match('.*[&?]orderI[Dd]=((?:D)?[0-9\\-]+)(?:&.*)?$', href)
         if m is None:
             raise RuntimeError(
                 'Failed to parse order ID from href %r' % (href, ))
@@ -402,25 +402,21 @@ class Scraper(scrape_lib.Scraper):
                         href = "/".join(tokens)
                     return (order_id, href)
 
-                def invoice_link_finder_hidden():
-                        # submenu containing order summary takes some time to load after click
-                        # search for order summary link and compare order_id
-                        # repeat until order_id is different to last order_id
-                        summary_links = self.driver.find_elements(By.LINK_TEXT, 
-                            self.domain.order_summary)
-                        if summary_links:
-                            href = summary_links[0].get_attribute('href')
-                            order_id = self.get_order_id(href)
-                            if order_id != last_order_id:
-                                return (order_id, href)
-                        return False
-
                 for invoice_link in invoices:
                     if not self.domain.order_summary_hidden:
                         (order_id, href) = invoice_link_finder(invoice_link)
                     else:
+                        # get order id to find the correct summary link
+                        order_id=self.get_order_id(invoice_link.get_attribute('href'))
                         invoice_link.click()
-                        (order_id, href), = self.wait_and_return(invoice_link_finder_hidden)
+                        # submenu containing order summary takes some time to load after click
+                        summary_link, = self.wait_and_locate(
+                            (By.XPATH,'//a[contains(@href,"{}") and contains(@href,"/gp/css/summary")]'.format(order_id)))
+                        if summary_link:
+                            href = summary_link.get_attribute('href')
+                        else:
+                            logger.info('Link extraction failed for order id: %r', order_id)
+                            order_id = False
                     if order_id:
                         if order_id in order_ids_seen:
                             logger.info('Skipping already-seen order id: %r', order_id)
