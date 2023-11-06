@@ -379,8 +379,6 @@ class Scraper(scrape_lib.Scraper):
                     invoices, = self.wait_and_return(invoice_finder)
                 initial_iteration = False
 
-                last_order_id = None
-
                 def invoice_link_finder(invoice_link):
                     if invoice_link.text not in self.domain.invoice_link:
                         # skip invoice if label is not known
@@ -401,22 +399,26 @@ class Scraper(scrape_lib.Scraper):
                         tokens[-1] = f"gp/css/summary/print.html?orderID={order_id}"
                         href = "/".join(tokens)
                     return (order_id, href)
+                
+                def invoice_link_finder_hidden(invoice_link):
+                    # get order id to find the correct summary link
+                    order_id=self.get_order_id(invoice_link.get_attribute('href'))
+                    invoice_link.click()
+                    # submenu containing order summary takes some time to load after click
+                    summary_link, = self.wait_and_locate(
+                        (By.XPATH,'//a[contains(@href,"{}") and contains(@href,"/gp/css/summary")]'.format(order_id)))
+                    if summary_link:
+                        href = summary_link.get_attribute('href')
+                        return (order_id, href)
+                    else:
+                        logger.info('Link extraction failed for order id: %r', order_id)
+                        return (False, False)
 
                 for invoice_link in invoices:
                     if not self.domain.order_summary_hidden:
                         (order_id, href) = invoice_link_finder(invoice_link)
                     else:
-                        # get order id to find the correct summary link
-                        order_id=self.get_order_id(invoice_link.get_attribute('href'))
-                        invoice_link.click()
-                        # submenu containing order summary takes some time to load after click
-                        summary_link, = self.wait_and_locate(
-                            (By.XPATH,'//a[contains(@href,"{}") and contains(@href,"/gp/css/summary")]'.format(order_id)))
-                        if summary_link:
-                            href = summary_link.get_attribute('href')
-                        else:
-                            logger.info('Link extraction failed for order id: %r', order_id)
-                            order_id = False
+                        (order_id, href) = invoice_link_finder_hidden(invoice_link)
                     if order_id:
                         if order_id in order_ids_seen:
                             logger.info('Skipping already-seen order id: %r', order_id)
@@ -427,7 +429,6 @@ class Scraper(scrape_lib.Scraper):
                         logger.info('Found order \'{}\''.format(order_id))
                         invoice_hrefs.append((href, order_id))
                         order_ids_seen.add(order_id)
-                        last_order_id = order_id
 
                 # Find next link
                 next_links = self.find_elements_by_descendant_text_match(
