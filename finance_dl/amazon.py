@@ -127,7 +127,7 @@ class Domain():
     # other domains: digital orders are in the regular order list
     digital_orders_menu: bool
     digital_orders_menu_text: Optional[str] = None
-    
+
     fresh_fallback: Optional[str] = None
 
 
@@ -135,7 +135,7 @@ class DOT_COM(Domain):
     def __init__(self) -> None:
         super().__init__(
             top_level='com',
-            sign_in='Sign In',
+            sign_in='Hello, sign in',
             sign_out='Sign Out',
 
             your_orders='Your Orders',
@@ -227,14 +227,14 @@ class DOT_DE(Domain):
             ('Jul', 'Juli'), ('Aug', 'August'), ('Sep', 'September'),
             ('Okt', 'Oktober'), ('Nov', 'November'), ('Dez', 'Dezember')
             ]
-    
+
     @staticmethod
     def parse_date(date_str) -> datetime.date:
         return dateutil.parser.parse(date_str, parserinfo=DOT_DE._parserinfo(dayfirst=True)).date()
 
 DOMAINS = {
     ".com": DOT_COM,
-    ".co.uk": DOT_CO_UK, 
+    ".co.uk": DOT_CO_UK,
     ".de": DOT_DE
     }
 
@@ -279,7 +279,7 @@ class Scraper(scrape_lib.Scraper):
         if self.logged_in:
             return
 
-        sign_out_links = self.find_elements_by_descendant_partial_text(self.domain.sign_out, 'a')
+        sign_out_links = self.find_elements_by_descendant_partial_text(self.domain.sign_out, 'span')
         if len(sign_out_links) > 0:
             logger.info('You must be already logged in!')
             self.logged_in = True
@@ -341,18 +341,22 @@ class Scraper(scrape_lib.Scraper):
             if name.endswith('.html')
         ])
 
+        def get_return_order_ids():
+            elements = self.driver.find_elements(By.XPATH, "//a[contains(text(),'View return/refund status')]/ancestor::div[@class='a-box-group a-spacing-base']/div[@class='a-box a-color-offset-background order-header']/div/div/div/div/div/div/span[1]")
+
+
         def get_invoice_urls():
             initial_iteration = True
             while True:
                 # break when there is no "next page"
 
                 # Problem: different site structures depending on country
-                
+
                 # .com / .uk
                 # Order Summary buttons are directly visible and can be
                 # identified with href containing "orderID="
                 # but order summary may have different names, e.g. for Amazon Fresh orders
-                
+
                 # .de
                 # only link with href containing "orderID=" is "Bestelldetails anzeigen" (=Order Details)
                 # which is not helpful
@@ -365,10 +369,10 @@ class Scraper(scrape_lib.Scraper):
                             By.XPATH, '//a[contains(@href, "orderID=")]')
                     else:
                         # order summary link is hidden in submenu for each order
-                        elements = self.driver.find_elements(By.XPATH, 
+                        elements = self.driver.find_elements(By.XPATH,
                             '//a[@class="a-popover-trigger a-declarative"]')
                         return [a for a in elements if a.text == self.domain.invoice]
-                
+
                 if initial_iteration:
                     invoices = invoice_finder()
                 else:
@@ -402,7 +406,7 @@ class Scraper(scrape_lib.Scraper):
                         # submenu containing order summary takes some time to load after click
                         # search for order summary link and compare order_id
                         # repeat until order_id is different to last order_id
-                        summary_links = self.driver.find_elements(By.LINK_TEXT, 
+                        summary_links = self.driver.find_elements(By.LINK_TEXT,
                             self.domain.order_summary)
                         if summary_links:
                             href = summary_links[0].get_attribute('href')
@@ -441,12 +445,17 @@ class Scraper(scrape_lib.Scraper):
                     logging.info("Next page.")
                     self.click(next_links[0])
 
-        def retrieve_all_order_groups():
+        def retrieve_all_order_groups(digital=False):
             order_select_index = 0
+
+            if digital:
+                selector = '//select[@name="orderFilter"]'
+            else:
+                selector = '//select[@name="timeFilter"]'
 
             while True:
                 (order_filter,), = self.wait_and_return(
-                    lambda: self.find_visible_elements(By.XPATH, '//select[@name="orderFilter"]')
+                    lambda: self.find_visible_elements(By.XPATH, selector)
                 )
                 order_select = Select(order_filter)
                 num_options = len(order_select.options)
@@ -486,7 +495,7 @@ class Scraper(scrape_lib.Scraper):
             )
             scrape_lib.retry(lambda: self.click(digital_orders_link),
                              retry_delay=2)
-            retrieve_all_order_groups()
+            retrieve_all_order_groups(digital=True)
 
         self.retrieve_invoices(invoice_hrefs)
 
@@ -530,7 +539,7 @@ class Scraper(scrape_lib.Scraper):
                     # order placed information in page header (top left)
                     m = re.fullmatch(self.domain.regular_order_placed, node.text.strip())
                     return m is not None
-                
+
                 def is_digital_order_row(node):
                     # information in heading of order table
                     if node.name != 'tr':
@@ -552,7 +561,7 @@ class Scraper(scrape_lib.Scraper):
                     # regular order
                     node = soup.find(is_order_placed_node)
                     regex = self.domain.regular_order_placed
-                
+
                 m = re.fullmatch(regex, node.text.strip())
                 if m is None:
                     return None
@@ -560,7 +569,7 @@ class Scraper(scrape_lib.Scraper):
                 return order_date
 
             order_date = get_date(page_source, order_id)
-            if order_date is None: 
+            if order_date is None:
                 if self.dir_per_year:
                     raise ValueError(f'Failed to get date for order {order_id}')
                 else:
