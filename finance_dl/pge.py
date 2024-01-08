@@ -104,7 +104,7 @@ class Scraper(scrape_lib.Scraper):
         if self.logged_in:
             return
         logger.info('Initiating log in')
-        self.driver.get('https://www.pge.com/en/myhome/myaccount/index.page')
+        self.driver.get('https://m.pge.com/')
 
         (username, password), = self.wait_and_return(
             self.find_username_and_password_in_any_frame)
