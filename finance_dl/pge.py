@@ -111,8 +111,8 @@ class Scraper(scrape_lib.Scraper):
         logger.info('Entering username and password')
         username.send_keys(self.credentials['username'])
         password.send_keys(self.credentials['password'])
-        with self.wait_for_page_load():
-            password.send_keys(Keys.ENTER)
+        password.send_keys(Keys.ENTER)
+        self.wait_and_return(lambda: self.find_visible_elements(By.ID, 'arrowBillPaymentHistory'))
         logger.info('Logged in')
         self.logged_in = True
 
@@ -157,15 +157,11 @@ class Scraper(scrape_lib.Scraper):
         actions.send_keys(Keys.ESCAPE)
         actions.perform()
         logger.info('Looking for download link')
-        (bills_link, ), = self.wait_and_return(
-            lambda: self.find_visible_elements_by_descendant_partial_text('BILL & PAYMENT HISTORY', 'h2'))
+        (bills_link, ), = self.wait_and_return(lambda: self.find_visible_elements(By.ID, 'arrowBillPaymentHistory'))
         scrape_lib.retry(lambda: self.click(bills_link), retry_delay=2)
-        (more_link, ), = self.wait_and_return(
-            lambda: self.find_visible_elements_by_descendant_partial_text('View up to 24 months of activity', 'a'))
+        (more_link, ), = self.wait_and_return(lambda: self.find_visible_elements(By.ID, 'href-view-24month-history'))
         scrape_lib.retry(lambda: self.click(more_link), retry_delay=2)
-        links, = self.wait_and_return(
-            lambda: self.find_visible_elements(By.PARTIAL_LINK_TEXT, "View Bill PDF")
-        )
+        links, = self.wait_and_return(lambda: self.find_visible_elements(By.CSS_SELECTOR, ".utag-bill-history-view-bill-pdf"))
 
         for link in links:
             if not self.do_download_from_link(link, output_dir) and self.stop_early:
