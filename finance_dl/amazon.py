@@ -445,9 +445,7 @@ class Scraper(scrape_lib.Scraper):
             order_select_index = 0
 
             while True:
-                (order_filter,), = self.wait_and_return(
-                    lambda: self.find_visible_elements(By.XPATH, '//select[@name="orderFilter"]')
-                )
+                order_filter, = self.wait_and_locate((By.CSS_SELECTOR, '#time-filter, #orderFilter'))
                 order_select = Select(order_filter)
                 num_options = len(order_select.options)
                 if order_select_index >= num_options:
