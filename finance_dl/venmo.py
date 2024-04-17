@@ -272,7 +272,11 @@ class Scraper(scrape_lib.Scraper):
         # Make sure rows are valid transactions with a date
         good_rows = []
         for r in rows:
-            if 'Datetime' not in r or r['Datetime'] != '':
+            if not r['ID'].isdigit():
+                logging.info('Invalid ID in row: {}'.format(r))
+                continue
+
+            if r['Datetime'] != '':
                 good_rows.append(r)
             else:
                 logging.info('Invalid date in row: {}'.format(r))
