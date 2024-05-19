@@ -363,16 +363,23 @@ class Scraper(scrape_lib.Scraper):
                 # order summary is hidden behind submenu which requires a click to be visible
 
                 def invoice_finder():
-                    if not self.domain.order_summary_hidden:
-                        # order summary link is visible on page
-                        return self.driver.find_elements(
-                            By.XPATH, '//a[contains(@href, "orderID=")]')
-                    else:
-                        # order summary link is hidden in submenu for each order
-                        elements = self.driver.find_elements(By.XPATH, 
-                            '//a[contains(@href, "invoice/invoice.html")]')
-                        return [a for a in elements if a.text == self.domain.invoice]
-                
+                    # order summary link is visible on page
+                    elements_raw = self.driver.find_elements(
+                        By.XPATH, '//a[contains(@href, "orderID=")]')
+                    elements = []
+                    for invoice_link in elements_raw:
+                        if invoice_link.text not in self.domain.invoice_link:
+                            # skip invoice if label is not known
+                            # different labels are possible e.g. for regular orders vs. Amazon fresh
+                            if invoice_link.text != "":
+                                # log non-empty link texts -> may be new type
+                                logger.debug(
+                                    'Skipping invoice due to unknown invoice_link.text: %s',
+                                    invoice_link.text)
+                        else:
+                            elements.append(invoice_link)
+                    return elements
+
                 if initial_iteration:
                     invoices = invoice_finder()
                 else:
@@ -380,15 +387,6 @@ class Scraper(scrape_lib.Scraper):
                 initial_iteration = False
 
                 def invoice_link_finder(invoice_link):
-                    if invoice_link.text not in self.domain.invoice_link:
-                        # skip invoice if label is not known
-                        # different labels are possible e.g. for regular orders vs. Amazon fresh
-                        if invoice_link.text != "":
-                            # log non-empty link texts -> may be new type
-                            logger.debug(
-                                'Skipping invoice due to unknown invoice_link.text: %s',
-                                invoice_link.text)
-                        return (False, False)
                     href = invoice_link.get_attribute('href')
                     order_id = self.get_order_id(href)
                     if self.domain.fresh_fallback is not None and invoice_link.text == self.domain.fresh_fallback:
@@ -401,12 +399,25 @@ class Scraper(scrape_lib.Scraper):
                     return (order_id, href)
                 
                 def invoice_link_finder_hidden(invoice_link):
-                    # get order id to find the correct summary link
+                    # get order id to later find the correct summary link
                     order_id=self.get_order_id(invoice_link.get_attribute('href'))
-                    invoice_link.click()
+                    
+                    # get parent element to search for invoice menu button (has no orderID specified)
+                    parent=invoice_link.find_element(By.XPATH,"./..")
+                    # leading dot in './/' specifies to only search in children
+                    popover=parent.find_elements(By.XPATH,'.//a[contains(@href, "invoice/invoice.html")]')
+                    # depending on the order group the XPATH may be different
+                    if len(popover) == 0:
+                        popover=parent.find_elements(
+                            By.XPATH,
+                            f'.//a[contains(text(), {self.domain.invoice}) and @class="a-popover-trigger a-declarative"]')
+
+                    # open invoice popover to extract invoice link
+                    popover[0].click()
+
                     # submenu containing order summary takes some time to load after click
                     summary_link, = self.wait_and_locate(
-                        (By.XPATH,'//a[contains(@href,"{}") and contains(@href,"/gp/css/summary")]'.format(order_id)))
+                        (By.XPATH,'//a[contains(@href,"{}") and contains(text(),"{}")]'.format(order_id, self.domain.order_summary)))
                     if summary_link:
                         href = summary_link.get_attribute('href')
                         return (order_id, href)
