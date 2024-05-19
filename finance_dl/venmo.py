@@ -82,7 +82,7 @@ import logging
 import os
 import time
 from selenium.webdriver.common.by import By
-from selenium.common.exceptions import NoSuchElementException
+from selenium.common.exceptions import NoSuchElementException, ElementNotInteractableException, StaleElementReferenceException
 from selenium.webdriver.support.ui import Select
 from selenium.webdriver.common.keys import Keys
 
@@ -146,19 +146,67 @@ class Scraper(scrape_lib.Scraper):
     def check_after_wait(self):
         check_url(self.driver.current_url)
 
+    def find_venmo_username(self):
+        for frame in self.for_each_frame():
+            try:
+                return self.driver.find_elements(By.XPATH, '//input[@type="text" or @type="email"]')
+            except NoSuchElementException:
+                pass
+        raise NoSuchElementException()
+
+    def find_venmo_password(self):
+        for frame in self.for_each_frame():
+            try:
+                return self.driver.find_elements(By.XPATH, '//input[@type="password"]')
+            except NoSuchElementException:
+                pass
+        raise NoSuchElementException()
+
+    def wait_for(self, condition_function):
+        start_time = time.time()
+        while time.time() < start_time + 3:
+            if condition_function():
+                return True
+            else:
+                time.sleep(0.1)
+        raise Exception(
+            'Timeout waiting for {}'.format(condition_function.__name__)
+        )
+
+    def click_through_to_new_page(self, button_text):
+        link = self.driver.find_element(By.XPATH, f'//button[@name="{button_text}"]')
+        link.click()
+
+        def link_has_gone_stale():
+            try:
+                # poll the link with an arbitrary call
+                link.find_elements(By.XPATH, 'doesnt-matter')
+                return False
+            except StaleElementReferenceException:
+                return True
+
+        self.wait_for(link_has_gone_stale)
+
     def login(self):
         if self.logged_in:
             return
         logger.info('Initiating log in')
         self.driver.get('https://venmo.com/account/sign-in')
 
-        (username, password), = self.wait_and_return(
-            self.find_username_and_password_in_any_frame)
-        logger.info('Entering username and password')
-        username.send_keys(self.credentials['username'])
+        #(username, password), = self.wait_and_return(
+        #    self.find_username_and_password_in_any_frame)
+        username = self.wait_and_return(self.find_venmo_username)[0][0]
+        try:
+            logger.info('Entering username')
+            username.send_keys(self.credentials['username'])
+            username.send_keys(Keys.ENTER)
+        except ElementNotInteractableException:
+            # indicates that username already filled in
+            logger.info("Skipped")
+        password = self.wait_and_return(self.find_venmo_password)[0][0]
+        logger.info('Entering password')
         password.send_keys(self.credentials['password'])
-        with self.wait_for_page_load():
-            password.send_keys(Keys.ENTER)
+        self.click_through_to_new_page("Sign in")
         logger.info('Logged in')
         self.logged_in = True
 
@@ -173,7 +221,7 @@ class Scraper(scrape_lib.Scraper):
     def download_csv(self):
         logger.info('Looking for CSV link')
         download_button, = self.wait_and_locate(
-            (By.XPATH, '//a[text() = "Download CSV"]'))
+            (By.XPATH, '//*[text() = "Download CSV"]'))
         self.click(download_button)
         logger.info('Waiting for CSV download')
         download_result, = self.wait_and_return(self.get_downloaded_file)
@@ -182,8 +230,8 @@ class Scraper(scrape_lib.Scraper):
 
     def get_balance(self, balance_type):
         try:
-            balance_node = self.driver.find_element(
-                By.XPATH, '//*[@class="%s"]/child::*[@class="balance-amt"]' %
+            balance_node =  self.driver.find_element(
+                By.XPATH, '//*[text() = "%s"]/following-sibling::*' %
                 balance_type)
             return balance_node.text
         except NoSuchElementException:
@@ -191,9 +239,11 @@ class Scraper(scrape_lib.Scraper):
 
     def get_balances(self):
         def maybe_get_balance():
-            start_balance = self.get_balance('start-balance')
-            end_balance = self.get_balance('end-balance')
+            start_balance = self.get_balance('Beginning amount')
+            end_balance = self.get_balance('Ending amount')
             if start_balance is not None and end_balance is not None:
+                start_balance = start_balance.replace("\n", "")
+                end_balance = end_balance.replace("\n", "")
                 return (start_balance, end_balance)
             try:
                 error_node = self.driver.find_element(
@@ -303,12 +353,19 @@ class Scraper(scrape_lib.Scraper):
 
         while start_date <= self.latest_history_date:
             end_date = min(self.latest_history_date,
-                           start_date + datetime.timedelta(days=89))
+                           self.last_day_of_month(start_date))
             self.fetch_statement(start_date, end_date)
             start_date = end_date + datetime.timedelta(days=1)
 
             logger.debug('Venmo hack: waiting 5 seconds between requests')
             time.sleep(5)
+
+
+    def last_day_of_month(self, any_day):
+        # The day 28 exists in every month. 4 days later, it's always next month
+        next_month = any_day.replace(day=28) + datetime.timedelta(days=4)
+        # subtracting the number of the current day brings us back one month
+        return next_month - datetime.timedelta(days=next_month.day)
 
     def run(self):
         self.login()

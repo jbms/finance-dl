@@ -195,7 +195,7 @@ class Scraper(object):
         partial_names = []
         other_names = []
         for name in names:
-            if name.endswith('.part') or name.endswith('.crdownload'):
+            if name.endswith('.part') or name.endswith('.crdownload') or name.startswith('.com.google.Chrome'):
                 partial_names.append(name)
             else:
                 other_names.append(name)
