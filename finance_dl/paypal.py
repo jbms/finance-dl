@@ -47,6 +47,7 @@ import logging
 import datetime
 import os
 import time
+import base64
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import Select
 from selenium.webdriver.common.keys import Keys
@@ -176,7 +177,8 @@ class Scraper(scrape_lib.Scraper):
         self.driver.get('https://www.paypal.com/myaccount/transactions/')
         # Get CSRF token
         body_element, = self.wait_and_locate((By.ID, "__APP_DATA__"))
-        attribute_object = json.loads(body_element.get_attribute("innerHTML"))
+        data = base64.b64decode(body_element.get_attribute("innerHTML"))
+        attribute_object = json.loads(data)
         self.csrf_token = attribute_object["_csrf"]
         return self.csrf_token
 
