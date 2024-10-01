@@ -206,7 +206,7 @@ class Scraper(scrape_lib.Scraper):
         password = self.wait_and_return(self.find_venmo_password)[0][0]
         logger.info('Entering password')
         password.send_keys(self.credentials['password'])
-        self.click_through_to_new_page("Sign in")
+        self.click_through_to_new_page("btnLogin")
         logger.info('Logged in')
         self.logged_in = True
 
