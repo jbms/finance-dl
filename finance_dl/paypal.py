@@ -51,7 +51,7 @@ import base64
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import Select
 from selenium.webdriver.common.keys import Keys
-from selenium.common.exceptions import NoSuchElementException
+from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from requests.exceptions import HTTPError
 import jsonschema
 from atomicwrites import atomic_write
@@ -137,12 +137,24 @@ class Scraper(scrape_lib.Scraper):
     def check_after_wait(self):
         check_url(self.driver.current_url)
 
+    def is_already_logged_in(self):
+        try:
+            self.wait_and_locate((By.XPATH, '//*[contains(text(), "PayPal balance")]'), timeout=1)
+            logger.info('Already logged in')
+            return True
+        except:
+            return False
+
     def login(self):
         if self.logged_in:
             return
 
         self.driver.get('https://www.paypal.com/us/signin')
         time.sleep(0.2)
+        if self.is_already_logged_in():
+            self.logged_in = True
+            self.csrf_token = None
+            return
         logger.info('Finding username field')
         username, = self.wait_and_locate((By.XPATH, '//input[@type="email"]'),
                                          only_displayed=True)
